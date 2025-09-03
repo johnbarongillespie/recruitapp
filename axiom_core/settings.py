@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+import dj_database_url # <-- ADD THIS IMPORT
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,12 +22,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-52nagltlu7d)^w)um2bu!q9w*z_(2)u%^0&kczp4ts5_!49#z4'
+# We now get the secret key from the environment variables
+SECRET_KEY = os.getenv('SECRET_KEY') # <-- UPDATED LINE
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False # <-- UPDATED LINE
+DEBUG = False
 
-ALLOWED_HOSTS = ['*'] # <-- UPDATED LINE
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -76,16 +78,10 @@ WSGI_APPLICATION = 'axiom_core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# We now get the database configuration from the DATABASE_URL environment variable
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres',
-        'PASSWORD': 'new2axiom',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
+    'default': dj_database_url.config(conn_max_age=600, ssl_require=True)
+} # <-- UPDATED SECTION
 
 
 # Password validation
