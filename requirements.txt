@@ -1,4 +1,4 @@
-annotated-types==0.7.0
+﻿annotated-types==0.7.0
 asgiref==3.9.1
 cachetools==5.5.2
 certifi==2025.8.3
