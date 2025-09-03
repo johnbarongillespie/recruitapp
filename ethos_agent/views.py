@@ -4,43 +4,48 @@ from dotenv import load_dotenv
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 import json
-from .models import PromptComponent, Conversation # Add Conversation
+from .models import PromptComponent, Conversation
 from .forms import CustomUserCreationForm
-from django.contrib.auth.decorators import login_required # We'll need this to get the user
+from django.contrib.auth.decorators import login_required
+import logging # Add this import
+
+# Get an instance of a logger
+logger = logging.getLogger(__name__)
 
 # --- Initialization ---
+# ... (rest of initialization code is the same) ...
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-1.5-pro-latest')
-# --------------------
 
-@login_required # This ensures only logged-in users can access the main page
+
+@login_required
 def index(request):
     return render(request, 'ethos_agent/index.html')
 
-@login_required # This ensures only logged-in users can ask the agent
+@login_required
 def ask_agent(request):
     if request.method == 'POST':
+        # ... (core prompt loading is the same) ...
         try:
             core_prompt = PromptComponent.objects.get(name="freya_core_prompt").content
         except PromptComponent.DoesNotExist:
-            core_prompt = "You are a helpful AI assistant." # Fallback
+            core_prompt = "You are a helpful AI assistant."
 
         data = json.loads(request.body)
         user_prompt = data.get('prompt')
 
-        # --- NEW: Build the Conversation History ---
+        # Add a log message
+        logger.info(f"User '{request.user.username}' submitted a new prompt.")
+
+        # ... (history building is the same) ...
         history = ""
-        # Get the last 5 turns of conversation for this user
         recent_conversations = Conversation.objects.filter(user=request.user).order_by('-timestamp')[:5]
-        # Reverse the order to be chronological
         for conv in reversed(recent_conversations):
             history += f"Human: {conv.prompt_text}\nAI: {conv.response_text}\n"
-        # ----------------------------------------
-
+        
         user_context = f"The user you are speaking to is named {request.user.username}."
         
-        # Assemble the final prompt with history
         full_prompt = (
             f"{core_prompt}\n\n"
             f"## RECENT CONVERSATION HISTORY\n{history}\n\n"
@@ -52,21 +57,24 @@ def ask_agent(request):
             response = model.generate_content(full_prompt)
             ai_response_text = response.text
 
-            # --- NEW: Save the new conversation turn to the database ---
+            # Add a log message
+            logger.info(f"Successfully generated AI response for user '{request.user.username}'.")
+
             Conversation.objects.create(
                 user=request.user,
                 prompt_text=user_prompt,
                 response_text=ai_response_text
             )
-            # ----------------------------------------------------
-
             return JsonResponse({'response': ai_response_text})
         except Exception as e:
+            # Add a critical error log message
+            logger.error(f"An API error occurred for user '{request.user.username}': {e}")
             return JsonResponse({'response': f'An error occurred: {e}'})
 
     return JsonResponse({'response': 'Invalid request.'})
 
 def register(request):
+    # ... (register function is the same) ...
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():

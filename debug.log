@@ -1,0 +1,8 @@
+INFO 2025-09-02 21:21:37,945 autoreload Watching for file changes with StatReloader
+INFO 2025-09-02 21:21:49,739 basehttp "GET /agent/ HTTP/1.1" 200 2064
+INFO 2025-09-02 21:22:06,492 views User 'Johnb' submitted a new prompt.
+INFO 2025-09-02 21:22:07,817 views Successfully generated AI response for user 'Johnb'.
+INFO 2025-09-02 21:22:07,826 basehttp "POST /agent/ask/ HTTP/1.1" 200 193
+INFO 2025-09-02 21:23:11,078 views User 'Johnb' submitted a new prompt.
+INFO 2025-09-02 21:23:17,999 views Successfully generated AI response for user 'Johnb'.
+INFO 2025-09-02 21:23:18,005 basehttp "POST /agent/ask/ HTTP/1.1" 200 1628
