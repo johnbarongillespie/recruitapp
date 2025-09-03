@@ -2,7 +2,15 @@ import uuid
 from django.db import models
 from django.contrib.auth.models import User
 
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    email_verified = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.user.username
+
 class PromptComponent(models.Model):
+    # ... (this model remains the same)
     name = models.CharField(max_length=100, unique=True)
     content = models.TextField()
 
@@ -10,14 +18,11 @@ class PromptComponent(models.Model):
         return self.name
 
 class Conversation(models.Model):
-    # A unique ID for each distinct conversation thread
+    # ... (this model remains the same)
     session_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    # A link to the user who owns this conversation
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    # The text of the prompt and its response
     prompt_text = models.TextField()
     response_text = models.TextField()
-    # The timestamp of when this entry was created
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

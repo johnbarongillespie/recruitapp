@@ -6,3 +6,21 @@ INFO 2025-09-02 21:22:07,826 basehttp "POST /agent/ask/ HTTP/1.1" 200 193
 INFO 2025-09-02 21:23:11,078 views User 'Johnb' submitted a new prompt.
 INFO 2025-09-02 21:23:17,999 views Successfully generated AI response for user 'Johnb'.
 INFO 2025-09-02 21:23:18,005 basehttp "POST /agent/ask/ HTTP/1.1" 200 1628
+INFO 2025-09-02 21:41:03,365 autoreload Watching for file changes with StatReloader
+WARNING 2025-09-02 21:41:13,052 log Not Found: /login
+WARNING 2025-09-02 21:41:13,053 basehttp "GET /login HTTP/1.1" 404 2881
+INFO 2025-09-02 21:41:25,585 basehttp "GET /accounts/login/ HTTP/1.1" 200 1006
+INFO 2025-09-02 21:41:28,600 basehttp "POST /accounts/login/ HTTP/1.1" 302 0
+INFO 2025-09-02 21:41:28,631 views User 'Johnb' loaded the agent page.
+INFO 2025-09-02 21:41:28,631 basehttp "GET /agent/ HTTP/1.1" 200 2064
+INFO 2025-09-02 21:57:35,156 autoreload Watching for file changes with StatReloader
+INFO 2025-09-02 21:57:50,273 basehttp "GET /accounts/register/ HTTP/1.1" 200 2124
+INFO 2025-09-02 21:59:06,235 basehttp "POST /accounts/register/ HTTP/1.1" 200 2318
+INFO 2025-09-02 21:59:41,399 basehttp "POST /accounts/register/ HTTP/1.1" 200 2313
+INFO 2025-09-02 21:59:59,122 basehttp "POST /accounts/register/ HTTP/1.1" 200 2313
+INFO 2025-09-02 22:00:13,247 basehttp "POST /accounts/register/ HTTP/1.1" 200 92
+INFO 2025-09-02 22:00:35,203 basehttp "GET /verify/Mw/cvivsd-0bd14ae456aae8840e32412cf9045464/ HTTP/1.1" 302 0
+INFO 2025-09-02 22:00:35,209 basehttp "GET /accounts/login/ HTTP/1.1" 200 1006
+INFO 2025-09-02 22:00:39,368 basehttp "POST /accounts/login/ HTTP/1.1" 302 0
+INFO 2025-09-02 22:00:39,399 views User 'testest' loaded the agent page.
+INFO 2025-09-02 22:00:39,399 basehttp "GET /agent/ HTTP/1.1" 200 2064
