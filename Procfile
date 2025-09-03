@@ -1,0 +1,1 @@
+web: gunicorn axiom_core.wsgi --log-file -
