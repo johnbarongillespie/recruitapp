@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Axiomism Agent</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f0f0f0; color: #333; max-width: 800px; margin: 40px auto; padding: 20px; }
+        #response { white-space: pre-wrap; background-color: #fff; padding: 15px; border-radius: 5px; margin-top: 20px; border: 1px solid #ddd;}
+        textarea { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 16px; }
+        button { padding: 10px 15px; border: none; background-color: #007bff; color: white; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Axiomism Agent</h1>
+    <form id="prompt-form">
+        {% csrf_token %} <textarea name="prompt" rows="4" placeholder="Ask a question..."></textarea><br><br>
+        <button type="submit">Submit</button>
+    </form>
+    <div id="response">The agent's response will appear here.</div>
+
+    <script>
+        document.getElementById('prompt-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const responseDiv = document.getElementById('response');
+            const prompt = new FormData(this).get('prompt');
+            const csrfToken = this.querySelector('input[name=csrfmiddlewaretoken]').value;
+            responseDiv.textContent = 'Thinking...';
+
+            const response = await fetch('/agent/ask/', { // Updated URL
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken // Send the security token
+                },
+                body: JSON.stringify({ prompt: prompt })
+            });
+            
+            const data = await response.json();
+            responseDiv.textContent = data.response;
+        });
+    </script>
+</body>
+</html>
