@@ -24,3 +24,729 @@ INFO 2025-09-02 22:00:35,209 basehttp "GET /accounts/login/ HTTP/1.1" 200 1006
 INFO 2025-09-02 22:00:39,368 basehttp "POST /accounts/login/ HTTP/1.1" 302 0
 INFO 2025-09-02 22:00:39,399 views User 'testest' loaded the agent page.
 INFO 2025-09-02 22:00:39,399 basehttp "GET /agent/ HTTP/1.1" 200 2064
+INFO 2025-09-16 20:26:37,280 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 20:26:49,433 basehttp "GET / HTTP/1.1" 302 0
+INFO 2025-09-16 20:26:49,447 basehttp "GET /accounts/login/?next=/ HTTP/1.1" 200 1036
+INFO 2025-09-16 20:26:52,082 basehttp "POST /accounts/login/?next=/ HTTP/1.1" 200 1195
+INFO 2025-09-16 20:26:57,062 basehttp "GET /accounts/login/?next=/ HTTP/1.1" 200 1036
+INFO 2025-09-16 20:27:08,247 basehttp "GET / HTTP/1.1" 302 0
+INFO 2025-09-16 20:27:08,250 basehttp "GET /accounts/login/?next=/ HTTP/1.1" 200 1036
+INFO 2025-09-16 20:27:29,066 basehttp "POST /accounts/login/?next=/ HTTP/1.1" 302 0
+INFO 2025-09-16 20:27:29,120 views User 'johnb' loaded the agent page.
+ERROR 2025-09-16 20:27:29,145 log Internal Server Error: /
+Traceback (most recent call last):
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\dev\RecruitApp\recruiting\views.py", line 30, in index
+    return render(request, 'recruiting/index.html')
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\template\loader.py", line 61, in render_to_string
+    template = get_template(template_name, using=using)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\template\loader.py", line 19, in get_template
+    raise TemplateDoesNotExist(template_name, chain=chain)
+django.template.exceptions.TemplateDoesNotExist: recruiting/index.html
+ERROR 2025-09-16 20:27:29,146 basehttp "GET / HTTP/1.1" 500 89270
+INFO 2025-09-16 20:32:14,498 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 20:32:14,500 basehttp "GET / HTTP/1.1" 200 2070
+WARNING 2025-09-16 20:32:32,911 log Not Found: /agent/ask/
+WARNING 2025-09-16 20:32:32,912 basehttp "POST /agent/ask/ HTTP/1.1" 404 3255
+WARNING 2025-09-16 20:33:11,498 log Not Found: /agent/ask/
+WARNING 2025-09-16 20:33:11,499 basehttp "POST /agent/ask/ HTTP/1.1" 404 3255
+WARNING 2025-09-16 20:35:45,397 log Not Found: /agent/ask/
+WARNING 2025-09-16 20:35:45,397 basehttp "POST /agent/ask/ HTTP/1.1" 404 3255
+WARNING 2025-09-16 20:36:10,778 log Not Found: /agent/ask/
+WARNING 2025-09-16 20:36:10,779 basehttp "POST /agent/ask/ HTTP/1.1" 404 3255
+INFO 2025-09-16 20:36:53,942 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 20:36:53,946 basehttp "GET / HTTP/1.1" 200 2064
+WARNING 2025-09-16 20:36:53,995 log Not Found: /favicon.ico
+WARNING 2025-09-16 20:36:53,995 basehttp "GET /favicon.ico HTTP/1.1" 404 3257
+INFO 2025-09-16 20:37:09,391 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 20:37:15,137 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 20:37:15,167 basehttp "POST /ask/ HTTP/1.1" 200 1434
+INFO 2025-09-16 20:39:45,482 basehttp "GET /accounts/login/ HTTP/1.1" 200 1036
+INFO 2025-09-16 20:39:47,556 basehttp "GET /admin/ HTTP/1.1" 200 7920
+INFO 2025-09-16 20:39:47,574 basehttp "GET /static/admin/css/base.css HTTP/1.1" 200 22120
+INFO 2025-09-16 20:39:47,578 basehttp "GET /static/admin/css/dark_mode.css HTTP/1.1" 200 2808
+INFO 2025-09-16 20:39:47,579 basehttp "GET /static/admin/js/theme.js HTTP/1.1" 200 1653
+INFO 2025-09-16 20:39:47,580 basehttp "GET /static/admin/css/nav_sidebar.css HTTP/1.1" 200 2810
+INFO 2025-09-16 20:39:47,581 basehttp "GET /static/admin/css/dashboard.css HTTP/1.1" 200 441
+INFO 2025-09-16 20:39:47,581 basehttp "GET /static/admin/css/responsive.css HTTP/1.1" 200 16565
+INFO 2025-09-16 20:39:47,584 basehttp "GET /static/admin/js/nav_sidebar.js HTTP/1.1" 200 3063
+INFO 2025-09-16 20:39:47,598 basehttp "GET /static/admin/img/icon-changelink.svg HTTP/1.1" 200 380
+INFO 2025-09-16 20:39:47,598 basehttp "GET /static/admin/img/icon-addlink.svg HTTP/1.1" 200 331
+INFO 2025-09-16 20:44:13,632 basehttp "GET /admin/recruiting/promptcomponent/add/ HTTP/1.1" 200 10332
+INFO 2025-09-16 20:44:13,650 basehttp "GET /static/admin/js/jquery.init.js HTTP/1.1" 200 347
+INFO 2025-09-16 20:44:13,651 basehttp "GET /static/admin/css/forms.css HTTP/1.1" 200 8525
+INFO 2025-09-16 20:44:13,651 basehttp "GET /static/admin/js/core.js HTTP/1.1" 200 6208
+INFO 2025-09-16 20:44:13,654 basehttp "GET /static/admin/js/actions.js HTTP/1.1" 200 8076
+INFO 2025-09-16 20:44:13,655 basehttp "GET /static/admin/js/admin/RelatedObjectLookups.js HTTP/1.1" 200 9777
+INFO 2025-09-16 20:44:13,655 basehttp "GET /static/admin/js/prepopulate.js HTTP/1.1" 200 1531
+INFO 2025-09-16 20:44:13,656 basehttp "GET /static/admin/js/urlify.js HTTP/1.1" 200 7887
+INFO 2025-09-16 20:44:13,658 basehttp "GET /static/admin/css/widgets.css HTTP/1.1" 200 11991
+INFO 2025-09-16 20:44:13,658 basehttp "GET /static/admin/js/prepopulate_init.js HTTP/1.1" 200 586
+INFO 2025-09-16 20:44:13,659 basehttp "GET /static/admin/js/vendor/jquery/jquery.js HTTP/1.1" 200 285314
+INFO 2025-09-16 20:44:13,660 basehttp "GET /static/admin/js/vendor/xregexp/xregexp.js HTTP/1.1" 200 325171
+INFO 2025-09-16 20:44:13,959 basehttp "GET /static/admin/js/change_form.js HTTP/1.1" 200 606
+INFO 2025-09-16 20:44:13,970 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 20:44:26,828 basehttp "POST /admin/recruiting/promptcomponent/add/ HTTP/1.1" 302 0
+INFO 2025-09-16 20:44:26,999 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 10468
+INFO 2025-09-16 20:44:27,017 basehttp "GET /static/admin/css/changelists.css HTTP/1.1" 200 6878
+INFO 2025-09-16 20:44:27,023 basehttp "GET /static/admin/js/filters.js HTTP/1.1" 200 978
+INFO 2025-09-16 20:44:27,337 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 20:44:27,361 basehttp "GET /static/admin/img/tooltag-add.svg HTTP/1.1" 200 331
+INFO 2025-09-16 20:44:27,361 basehttp "GET /static/admin/img/icon-yes.svg HTTP/1.1" 200 436
+INFO 2025-09-16 20:44:56,360 basehttp "GET /admin/recruiting/promptcomponent/1/change/ HTTP/1.1" 200 14159
+INFO 2025-09-16 20:44:56,438 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 20:45:55,873 basehttp "POST /admin/recruiting/promptcomponent/1/change/ HTTP/1.1" 302 0
+INFO 2025-09-16 20:45:56,027 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 10470
+INFO 2025-09-16 20:45:56,105 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 20:46:13,245 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 20:46:16,481 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 20:46:16,514 basehttp "POST /ask/ HTTP/1.1" 200 1298
+INFO 2025-09-16 20:46:51,979 basehttp "GET /admin/ HTTP/1.1" 200 8710
+INFO 2025-09-16 20:52:04,692 basehttp "GET /admin/recruiting/promptcomponent/add/ HTTP/1.1" 200 10332
+INFO 2025-09-16 20:52:04,765 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 20:53:17,449 basehttp "POST /admin/recruiting/promptcomponent/add/ HTTP/1.1" 302 0
+INFO 2025-09-16 20:53:17,603 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 10749
+INFO 2025-09-16 20:53:17,679 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 20:53:25,788 basehttp "GET /admin/recruiting/promptcomponent/1/change/ HTTP/1.1" 200 14165
+INFO 2025-09-16 20:53:25,858 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 20:53:43,444 basehttp "POST /admin/recruiting/promptcomponent/1/change/ HTTP/1.1" 302 0
+INFO 2025-09-16 20:53:43,609 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 10746
+INFO 2025-09-16 20:53:43,688 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 20:53:52,799 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 20:53:52,800 basehttp "GET / HTTP/1.1" 200 2064
+INFO 2025-09-16 20:54:03,724 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 20:54:07,037 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 20:54:07,068 basehttp "POST /ask/ HTTP/1.1" 200 1297
+INFO 2025-09-16 20:54:14,236 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 20:54:14,237 basehttp "GET / HTTP/1.1" 200 2064
+WARNING 2025-09-16 20:54:14,257 log Not Found: /favicon.ico
+WARNING 2025-09-16 20:54:14,257 basehttp "GET /favicon.ico HTTP/1.1" 404 3257
+INFO 2025-09-16 20:54:27,692 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 20:54:30,796 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 20:54:30,826 basehttp "POST /ask/ HTTP/1.1" 200 1297
+INFO 2025-09-16 20:56:59,679 basehttp "GET /admin/ HTTP/1.1" 200 9460
+INFO 2025-09-16 20:57:06,922 basehttp "GET /admin/recruiting/promptcomponent/add/ HTTP/1.1" 200 10332
+INFO 2025-09-16 20:57:07,000 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 20:57:49,681 basehttp "POST /admin/recruiting/promptcomponent/add/ HTTP/1.1" 302 0
+INFO 2025-09-16 20:57:49,825 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 11063
+INFO 2025-09-16 20:57:49,900 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 20:57:53,947 basehttp "GET /admin/recruiting/promptcomponent/1/change/ HTTP/1.1" 200 14153
+INFO 2025-09-16 20:57:54,099 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 20:58:02,190 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 10825
+INFO 2025-09-16 20:58:02,258 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 20:58:13,775 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 10825
+INFO 2025-09-16 20:58:13,785 basehttp "GET /static/admin/css/base.css HTTP/1.1" 200 22120
+INFO 2025-09-16 20:58:13,787 basehttp "GET /static/admin/css/dark_mode.css HTTP/1.1" 200 2808
+INFO 2025-09-16 20:58:13,789 basehttp "GET /static/admin/js/theme.js HTTP/1.1" 200 1653
+INFO 2025-09-16 20:58:13,795 basehttp "GET /static/admin/css/nav_sidebar.css HTTP/1.1" 200 2810
+INFO 2025-09-16 20:58:13,795 basehttp "GET /static/admin/css/changelists.css HTTP/1.1" 200 6878
+INFO 2025-09-16 20:58:13,795 basehttp "GET /static/admin/js/jquery.init.js HTTP/1.1" 200 347
+INFO 2025-09-16 20:58:13,795 basehttp "GET /static/admin/css/responsive.css HTTP/1.1" 200 16565
+INFO 2025-09-16 20:58:13,798 basehttp "GET /static/admin/js/admin/RelatedObjectLookups.js HTTP/1.1" 200 9777
+INFO 2025-09-16 20:58:13,798 basehttp "GET /static/admin/js/urlify.js HTTP/1.1" 200 7887
+INFO 2025-09-16 20:58:13,798 basehttp "GET /static/admin/js/core.js HTTP/1.1" 200 6208
+INFO 2025-09-16 20:58:13,798 basehttp "GET /static/admin/js/actions.js HTTP/1.1" 200 8076
+INFO 2025-09-16 20:58:13,801 basehttp "GET /static/admin/js/prepopulate.js HTTP/1.1" 200 1531
+INFO 2025-09-16 20:58:13,802 basehttp "GET /static/admin/js/vendor/jquery/jquery.js HTTP/1.1" 200 285314
+INFO 2025-09-16 20:58:13,803 basehttp "GET /static/admin/js/vendor/xregexp/xregexp.js HTTP/1.1" 200 325171
+INFO 2025-09-16 20:58:13,806 basehttp "GET /static/admin/js/nav_sidebar.js HTTP/1.1" 200 3063
+INFO 2025-09-16 20:58:13,826 basehttp "GET /static/admin/js/filters.js HTTP/1.1" 200 978
+INFO 2025-09-16 20:58:14,133 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 20:58:14,146 basehttp "GET /static/admin/img/icon-addlink.svg HTTP/1.1" 200 331
+INFO 2025-09-16 20:58:14,147 basehttp "GET /static/admin/img/tooltag-add.svg HTTP/1.1" 200 331
+WARNING 2025-09-16 20:58:14,180 log Not Found: /favicon.ico
+WARNING 2025-09-16 20:58:14,180 basehttp "GET /favicon.ico HTTP/1.1" 404 3257
+INFO 2025-09-16 20:58:19,976 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 20:58:19,977 basehttp "GET / HTTP/1.1" 200 2064
+INFO 2025-09-16 20:58:30,314 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 20:58:32,193 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 20:58:32,224 basehttp "POST /ask/ HTTP/1.1" 200 535
+INFO 2025-09-16 20:59:36,870 basehttp "GET /admin/ HTTP/1.1" 200 9844
+INFO 2025-09-16 21:01:20,394 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 10825
+INFO 2025-09-16 21:01:20,469 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:03:05,398 autoreload C:\dev\RecruitApp\recruiting\models.py changed, reloading.
+INFO 2025-09-16 21:03:07,900 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 21:06:41,874 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 21:06:51,847 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 21:06:51,851 basehttp "GET / HTTP/1.1" 200 2064
+INFO 2025-09-16 21:07:10,255 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 21:07:12,186 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 21:07:12,214 basehttp "POST /ask/ HTTP/1.1" 200 535
+INFO 2025-09-16 21:16:02,309 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 21:16:08,830 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 21:16:08,839 basehttp "GET / HTTP/1.1" 200 4560
+WARNING 2025-09-16 21:16:08,877 log Not Found: /favicon.ico
+WARNING 2025-09-16 21:16:08,877 basehttp "GET /favicon.ico HTTP/1.1" 404 3257
+INFO 2025-09-16 21:19:42,371 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 21:19:42,372 basehttp "GET / HTTP/1.1" 200 4560
+WARNING 2025-09-16 21:19:42,392 log Not Found: /favicon.ico
+WARNING 2025-09-16 21:19:42,392 basehttp "GET /favicon.ico HTTP/1.1" 404 3257
+INFO 2025-09-16 21:19:59,270 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 21:19:59,271 basehttp "GET / HTTP/1.1" 200 4560
+WARNING 2025-09-16 21:19:59,294 log Not Found: /favicon.ico
+WARNING 2025-09-16 21:19:59,294 basehttp "GET /favicon.ico HTTP/1.1" 404 3257
+INFO 2025-09-16 21:21:19,893 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 21:21:19,895 basehttp "GET / HTTP/1.1" 200 4499
+WARNING 2025-09-16 21:21:19,919 log Not Found: /favicon.ico
+WARNING 2025-09-16 21:21:19,919 basehttp "GET /favicon.ico HTTP/1.1" 404 3257
+INFO 2025-09-16 21:21:34,549 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 21:21:34,550 basehttp "GET /?csrfmiddlewaretoken=rD2ERTgQQcXaM4ywzLBAzN18g3z9QeczpCQyjNGzAWJCKQ94zwyCfmpA3dKwvfr8&prompt=Hello+Alex%2C+How+can+you+help+me%3F HTTP/1.1" 200 4499
+INFO 2025-09-16 21:22:18,449 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 21:22:18,450 basehttp "GET /?csrfmiddlewaretoken=Pq3aLMXesCs13rQI9ArvDHtXk56N32HANpR4dGnXcmet1drg9loxjgRp7fhaI3W9&prompt=hello%3F HTTP/1.1" 200 4499
+INFO 2025-09-16 21:23:19,373 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 21:23:19,374 basehttp "GET /?csrfmiddlewaretoken=Pq3aLMXesCs13rQI9ArvDHtXk56N32HANpR4dGnXcmet1drg9loxjgRp7fhaI3W9&prompt=hello%3F HTTP/1.1" 200 5037
+WARNING 2025-09-16 21:23:19,392 log Not Found: /favicon.ico
+WARNING 2025-09-16 21:23:19,392 basehttp "GET /favicon.ico HTTP/1.1" 404 3257
+INFO 2025-09-16 21:23:26,460 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 21:23:28,863 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 21:23:28,894 basehttp "POST /ask/ HTTP/1.1" 200 447
+INFO 2025-09-16 21:24:56,619 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 21:25:02,399 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 21:25:02,430 basehttp "POST /ask/ HTTP/1.1" 200 1279
+INFO 2025-09-16 21:25:11,467 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 21:25:14,273 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 21:25:14,303 basehttp "POST /ask/ HTTP/1.1" 200 530
+INFO 2025-09-16 21:28:30,135 basehttp "GET /admin/ HTTP/1.1" 200 9844
+INFO 2025-09-16 21:28:33,708 basehttp "GET /admin/recruiting/promptcomponent/add/ HTTP/1.1" 200 11710
+INFO 2025-09-16 21:28:33,789 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:28:38,323 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 10891
+INFO 2025-09-16 21:28:38,397 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:28:48,214 basehttp "GET /admin/recruiting/promptcomponent/3/change/ HTTP/1.1" 200 18232
+INFO 2025-09-16 21:28:48,287 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:29:00,905 basehttp "POST /admin/recruiting/promptcomponent/3/change/ HTTP/1.1" 302 0
+INFO 2025-09-16 21:29:01,050 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 11142
+INFO 2025-09-16 21:29:01,124 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:29:16,168 basehttp "GET /admin/recruiting/promptcomponent/add/ HTTP/1.1" 200 11710
+INFO 2025-09-16 21:29:16,241 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:31:01,345 basehttp "POST /admin/recruiting/promptcomponent/add/ HTTP/1.1" 302 0
+INFO 2025-09-16 21:31:01,494 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 11440
+INFO 2025-09-16 21:31:01,566 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:31:05,147 basehttp "GET /admin/recruiting/promptcomponent/3/change/ HTTP/1.1" 200 18232
+INFO 2025-09-16 21:31:05,224 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:31:24,577 basehttp "POST /admin/recruiting/promptcomponent/3/change/ HTTP/1.1" 302 0
+INFO 2025-09-16 21:31:24,749 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 11452
+INFO 2025-09-16 21:31:24,823 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:31:42,377 basehttp "GET /admin/recruiting/promptcomponent/2/change/ HTTP/1.1" 200 14835
+INFO 2025-09-16 21:31:42,463 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:31:47,756 basehttp "POST /admin/recruiting/promptcomponent/2/change/ HTTP/1.1" 302 0
+INFO 2025-09-16 21:31:47,904 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 11440
+INFO 2025-09-16 21:31:47,980 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:31:54,805 basehttp "GET /admin/recruiting/promptcomponent/1/change/ HTTP/1.1" 200 15564
+INFO 2025-09-16 21:31:54,875 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:31:59,554 basehttp "POST /admin/recruiting/promptcomponent/1/change/ HTTP/1.1" 302 0
+INFO 2025-09-16 21:31:59,698 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 11441
+INFO 2025-09-16 21:31:59,770 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:33:01,108 basehttp "GET /admin/recruiting/promptcomponent/3/change/ HTTP/1.1" 200 18238
+INFO 2025-09-16 21:33:01,181 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:33:24,899 basehttp "POST /admin/recruiting/promptcomponent/3/change/ HTTP/1.1" 302 0
+INFO 2025-09-16 21:33:25,042 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 11452
+INFO 2025-09-16 21:33:25,115 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:34:03,691 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 21:34:03,692 basehttp "GET / HTTP/1.1" 200 5928
+INFO 2025-09-16 21:34:06,048 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 21:34:06,049 basehttp "GET / HTTP/1.1" 200 5928
+WARNING 2025-09-16 21:34:06,194 log Not Found: /favicon.ico
+WARNING 2025-09-16 21:34:06,195 basehttp "GET /favicon.ico HTTP/1.1" 404 3257
+INFO 2025-09-16 21:34:20,446 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 21:34:23,753 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 21:34:23,782 basehttp "POST /ask/ HTTP/1.1" 200 707
+INFO 2025-09-16 21:35:38,891 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 21:35:47,379 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 21:35:47,408 basehttp "POST /ask/ HTTP/1.1" 200 1944
+INFO 2025-09-16 21:37:35,834 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 21:37:43,885 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 21:37:43,915 basehttp "POST /ask/ HTTP/1.1" 200 1860
+INFO 2025-09-16 21:38:00,054 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 21:38:03,916 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 21:38:03,944 basehttp "POST /ask/ HTTP/1.1" 200 714
+INFO 2025-09-16 21:39:35,507 basehttp "GET /admin/ HTTP/1.1" 200 11830
+INFO 2025-09-16 21:39:40,120 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 11201
+INFO 2025-09-16 21:39:40,195 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:39:45,418 basehttp "GET /admin/recruiting/promptcomponent/4/change/ HTTP/1.1" 200 12397
+INFO 2025-09-16 21:39:45,489 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:40:14,186 basehttp "POST /admin/recruiting/promptcomponent/4/change/ HTTP/1.1" 302 0
+INFO 2025-09-16 21:40:14,335 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 11442
+INFO 2025-09-16 21:40:14,421 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:40:26,312 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 21:40:26,316 basehttp "GET / HTTP/1.1" 200 5928
+INFO 2025-09-16 21:40:58,919 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 21:41:09,055 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 21:41:09,084 basehttp "POST /ask/ HTTP/1.1" 200 2412
+INFO 2025-09-16 21:41:15,874 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 21:41:20,241 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 21:41:20,273 basehttp "POST /ask/ HTTP/1.1" 200 954
+INFO 2025-09-16 21:43:55,276 basehttp "GET /admin/ HTTP/1.1" 200 11839
+WARNING 2025-09-16 21:43:56,526 log Not Found: /agent/
+WARNING 2025-09-16 21:43:56,526 basehttp "GET /agent/ HTTP/1.1" 404 3242
+INFO 2025-09-16 21:44:00,973 basehttp "GET /admin/ HTTP/1.1" 200 11839
+INFO 2025-09-16 21:44:06,538 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 11201
+INFO 2025-09-16 21:44:06,622 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:44:10,349 basehttp "GET /admin/recruiting/promptcomponent/3/change/ HTTP/1.1" 200 18403
+INFO 2025-09-16 21:44:10,430 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:47:17,694 basehttp "POST /admin/recruiting/promptcomponent/3/change/ HTTP/1.1" 302 0
+INFO 2025-09-16 21:47:17,843 basehttp "GET /admin/recruiting/promptcomponent/ HTTP/1.1" 200 11452
+INFO 2025-09-16 21:47:17,919 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO 2025-09-16 21:47:28,662 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 21:47:28,663 basehttp "GET / HTTP/1.1" 200 5928
+INFO 2025-09-16 21:47:41,785 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 21:47:45,344 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 21:47:45,375 basehttp "POST /ask/ HTTP/1.1" 200 573
+INFO 2025-09-16 21:49:35,450 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 21:49:35,452 basehttp "GET / HTTP/1.1" 200 5928
+WARNING 2025-09-16 21:49:35,797 log Not Found: /favicon.ico
+WARNING 2025-09-16 21:49:35,797 basehttp "GET /favicon.ico HTTP/1.1" 404 3257
+INFO 2025-09-16 21:49:41,593 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 21:49:47,342 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 21:49:47,371 basehttp "POST /ask/ HTTP/1.1" 200 1211
+INFO 2025-09-16 21:54:31,165 autoreload C:\dev\RecruitApp\recruiting\models.py changed, reloading.
+INFO 2025-09-16 21:54:33,629 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 21:56:24,845 autoreload C:\dev\RecruitApp\recruiting\models.py changed, reloading.
+INFO 2025-09-16 21:56:25,282 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 22:00:44,605 autoreload Watching for file changes with StatReloader
+ERROR 2025-09-16 22:01:17,012 log Internal Server Error: /
+Traceback (most recent call last):
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\contrib\sessions\backends\base.py", line 244, in _get_session
+    return self._session_cache
+           ^^^^^^^^^^^^^^^^^^^
+AttributeError: 'SessionStore' object has no attribute '_session_cache'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "dpg-d350cjt6ubrc73cpnrd0-a.ohio-postgres.render.com" (18.118.220.241), port 5432 failed: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 56, in _view_wrapper
+    test_pass = test_func(request.user)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 79, in <lambda>
+    lambda u: u.is_authenticated,
+              ^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\utils\functional.py", line 251, in inner
+    self._setup()
+    ~~~~~~~~~~~^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\utils\functional.py", line 404, in _setup
+    self._wrapped = self._setupfunc()
+                    ~~~~~~~~~~~~~~~^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\contrib\auth\middleware.py", line 40, in <lambda>
+    request.user = SimpleLazyObject(lambda: get_user(request))
+                                            ~~~~~~~~^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\contrib\auth\middleware.py", line 20, in get_user
+    request._cached_user = auth.get_user(request)
+                           ~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\contrib\auth\__init__.py", line 304, in get_user
+    user_id = _get_user_session_key(request)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\contrib\auth\__init__.py", line 95, in _get_user_session_key
+    return get_user_model()._meta.pk.to_python(request.session[SESSION_KEY])
+                                               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\contrib\sessions\backends\base.py", line 55, in __getitem__
+    return self._session[key]
+           ^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\contrib\sessions\backends\base.py", line 249, in _get_session
+    self._session_cache = self.load()
+                          ~~~~~~~~~^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\contrib\sessions\backends\db.py", line 55, in load
+    s = self._get_session_from_db()
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\contrib\sessions\backends\db.py", line 34, in _get_session_from_db
+    return self.model.objects.get(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        session_key=self.session_key, expire_date__gt=timezone.now()
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\query.py", line 629, in get
+    num = len(clone)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\query.py", line 366, in __len__
+    self._fetch_all()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\query.py", line 1949, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+        chunked_fetch=self.chunked_fetch, chunk_size=self.chunk_size
+    )
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1621, in execute_sql
+    cursor = self.connection.cursor()
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\backends\base\base.py", line 320, in cursor
+    return self._cursor()
+           ~~~~~~~~~~~~^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\backends\base\base.py", line 296, in _cursor
+    self.ensure_connection()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\backends\base\base.py", line 278, in ensure_connection
+    with self.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+django.db.utils.OperationalError: connection to server at "dpg-d350cjt6ubrc73cpnrd0-a.ohio-postgres.render.com" (18.118.220.241), port 5432 failed: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+ERROR 2025-09-16 22:01:17,018 basehttp "GET / HTTP/1.1" 500 222809
+WARNING 2025-09-16 22:01:17,739 log Not Found: /favicon.ico
+WARNING 2025-09-16 22:01:17,739 basehttp "GET /favicon.ico HTTP/1.1" 404 3257
+INFO 2025-09-16 22:01:49,362 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 22:01:49,370 basehttp "GET / HTTP/1.1" 200 5928
+INFO 2025-09-16 22:02:01,585 views User 'johnb' submitted a new prompt.
+ERROR 2025-09-16 22:02:01,719 log Internal Server Error: /ask/
+Traceback (most recent call last):
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\dev\RecruitApp\recruiting\views.py", line 57, in ask_agent
+    recent_conversations = Conversation.objects.filter(user=request.user).order_by('-timestamp')[:5]
+                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\query.py", line 1493, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\query.py", line 1511, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\query.py", line 1518, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\sql\query.py", line 1646, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\sql\query.py", line 1678, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ~~~~~~~~~~~~~~~~~^
+        child,
+        ^^^^^^
+    ...<7 lines>...
+        update_join_types=update_join_types,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\sql\query.py", line 1526, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\sql\query.py", line 1333, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\sql\query.py", line 1805, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'user' into field. Choices are: id, prompt_text, response_text, session, session_id, timestamp
+ERROR 2025-09-16 22:02:01,722 basehttp "POST /ask/ HTTP/1.1" 500 133515
+INFO 2025-09-16 22:04:02,965 views User 'johnb' submitted a new prompt.
+ERROR 2025-09-16 22:04:03,101 log Internal Server Error: /ask/
+Traceback (most recent call last):
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\dev\RecruitApp\recruiting\views.py", line 57, in ask_agent
+    recent_conversations = Conversation.objects.filter(user=request.user).order_by('-timestamp')[:5]
+                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\query.py", line 1493, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\query.py", line 1511, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\query.py", line 1518, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\sql\query.py", line 1646, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\sql\query.py", line 1678, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ~~~~~~~~~~~~~~~~~^
+        child,
+        ^^^^^^
+    ...<7 lines>...
+        update_join_types=update_join_types,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\sql\query.py", line 1526, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\sql\query.py", line 1333, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\sql\query.py", line 1805, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'user' into field. Choices are: id, prompt_text, response_text, session, session_id, timestamp
+ERROR 2025-09-16 22:04:03,103 basehttp "POST /ask/ HTTP/1.1" 500 133497
+INFO 2025-09-16 22:06:04,226 autoreload C:\dev\RecruitApp\recruiting\models.py changed, reloading.
+INFO 2025-09-16 22:06:04,668 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 22:06:10,997 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 22:06:11,009 basehttp "GET / HTTP/1.1" 200 5928
+WARNING 2025-09-16 22:06:11,359 log Not Found: /favicon.ico
+WARNING 2025-09-16 22:06:11,359 basehttp "GET /favicon.ico HTTP/1.1" 404 3257
+INFO 2025-09-16 22:06:16,996 views User 'johnb' submitted a new prompt.
+ERROR 2025-09-16 22:06:17,084 log Internal Server Error: /ask/
+Traceback (most recent call last):
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\dev\RecruitApp\recruiting\views.py", line 57, in ask_agent
+    recent_conversations = Conversation.objects.filter(user=request.user).order_by('-timestamp')[:5]
+                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\query.py", line 1722, in order_by
+    obj.query.add_ordering(*field_names)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\sql\query.py", line 2291, in add_ordering
+    self.names_to_path(item.split(LOOKUP_SEP), self.model._meta)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\sql\query.py", line 1805, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'timestamp' into field. Choices are: id, session, session_id, user, user_id
+ERROR 2025-09-16 22:06:17,087 basehttp "POST /ask/ HTTP/1.1" 500 101129
+INFO 2025-09-16 22:07:28,727 autoreload C:\dev\RecruitApp\recruiting\models.py changed, reloading.
+INFO 2025-09-16 22:07:29,158 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 22:07:35,600 views User 'johnb' submitted a new prompt.
+ERROR 2025-09-16 22:07:35,754 log Internal Server Error: /ask/
+Traceback (most recent call last):
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column recruiting_conversation.user_id does not exist
+LINE 1: ...on"."id", "recruiting_conversation"."session_id", "recruitin...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\contrib\auth\decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\dev\RecruitApp\recruiting\views.py", line 58, in ask_agent
+    for conv in reversed(recent_conversations):
+                ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\query.py", line 366, in __len__
+    self._fetch_all()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\query.py", line 1949, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+        chunked_fetch=self.chunked_fetch, chunk_size=self.chunk_size
+    )
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1623, in execute_sql
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\dev\RecruitApp\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: column recruiting_conversation.user_id does not exist
+LINE 1: ...on"."id", "recruiting_conversation"."session_id", "recruitin...
+                                                             ^
+
+ERROR 2025-09-16 22:07:35,757 basehttp "POST /ask/ HTTP/1.1" 500 141954
+INFO 2025-09-16 22:08:49,021 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 22:08:55,074 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 22:08:55,081 basehttp "GET / HTTP/1.1" 200 5928
+WARNING 2025-09-16 22:08:55,410 log Not Found: /favicon.ico
+WARNING 2025-09-16 22:08:55,410 basehttp "GET /favicon.ico HTTP/1.1" 404 3257
+INFO 2025-09-16 22:09:01,161 views User 'johnb' submitted a new prompt.
+INFO 2025-09-16 22:09:03,118 views Successfully generated AI response for user 'johnb'.
+INFO 2025-09-16 22:09:03,150 basehttp "POST /ask/ HTTP/1.1" 200 402
+INFO 2025-09-16 22:11:34,374 autoreload C:\dev\RecruitApp\recruiting\urls.py changed, reloading.
+INFO 2025-09-16 22:11:36,880 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 22:12:54,238 autoreload C:\dev\RecruitApp\recruiting\views.py changed, reloading.
+INFO 2025-09-16 22:12:54,674 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 22:14:50,051 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 22:15:05,000 basehttp "GET /sessions/ HTTP/1.1" 200 16
+INFO 2025-09-16 22:21:06,867 autoreload C:\dev\RecruitApp\recruiting\views.py changed, reloading.
+INFO 2025-09-16 22:21:07,375 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 22:22:42,220 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 22:22:42,228 basehttp "GET / HTTP/1.1" 200 5928
+INFO 2025-09-16 22:22:45,398 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 22:22:45,400 basehttp "GET / HTTP/1.1" 200 5928
+WARNING 2025-09-16 22:22:45,746 log Not Found: /favicon.ico
+WARNING 2025-09-16 22:22:45,746 basehttp "GET /favicon.ico HTTP/1.1" 404 3525
+INFO 2025-09-16 22:23:07,018 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 22:23:07,021 basehttp "GET / HTTP/1.1" 200 5928
+WARNING 2025-09-16 22:23:07,178 log Not Found: /favicon.ico
+WARNING 2025-09-16 22:23:07,178 basehttp "GET /favicon.ico HTTP/1.1" 404 3525
+WARNING 2025-09-16 22:24:17,222 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2025-09-16 22:24:17,222 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 3636
+INFO 2025-09-16 22:24:51,836 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 22:24:51,836 basehttp "GET / HTTP/1.1" 200 5928
+WARNING 2025-09-16 22:24:51,852 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2025-09-16 22:24:51,852 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 3636
+WARNING 2025-09-16 22:24:52,233 log Not Found: /favicon.ico
+WARNING 2025-09-16 22:24:52,233 basehttp "GET /favicon.ico HTTP/1.1" 404 3525
+INFO 2025-09-16 22:27:58,512 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 22:28:04,778 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 22:28:04,784 basehttp "GET / HTTP/1.1" 200 5928
+WARNING 2025-09-16 22:28:05,186 log Not Found: /favicon.ico
+WARNING 2025-09-16 22:28:05,186 basehttp "GET /favicon.ico HTTP/1.1" 404 3525
+WARNING 2025-09-16 22:28:09,314 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2025-09-16 22:28:09,314 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 3636
+INFO 2025-09-16 22:28:14,078 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 22:28:14,080 basehttp "GET / HTTP/1.1" 200 5928
+WARNING 2025-09-16 22:28:14,099 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2025-09-16 22:28:14,099 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 3636
+WARNING 2025-09-16 22:28:14,467 log Not Found: /favicon.ico
+WARNING 2025-09-16 22:28:14,467 basehttp "GET /favicon.ico HTTP/1.1" 404 3525
+INFO 2025-09-16 22:30:50,140 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 22:30:55,289 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 22:30:55,296 basehttp "GET / HTTP/1.1" 200 5928
+WARNING 2025-09-16 22:30:55,711 log Not Found: /favicon.ico
+WARNING 2025-09-16 22:30:55,711 basehttp "GET /favicon.ico HTTP/1.1" 404 3525
+INFO 2025-09-16 22:31:15,828 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 22:31:15,829 basehttp "GET / HTTP/1.1" 200 5928
+WARNING 2025-09-16 22:31:24,746 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2025-09-16 22:31:24,746 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 3636
+INFO 2025-09-16 22:31:27,982 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 22:31:27,984 basehttp "GET / HTTP/1.1" 200 5928
+WARNING 2025-09-16 22:31:27,999 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2025-09-16 22:31:27,999 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 3636
+WARNING 2025-09-16 22:31:28,366 log Not Found: /favicon.ico
+WARNING 2025-09-16 22:31:28,367 basehttp "GET /favicon.ico HTTP/1.1" 404 3525
+INFO 2025-09-16 22:38:56,856 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 22:39:03,062 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 22:39:03,065 basehttp "GET / HTTP/1.1" 200 7232
+WARNING 2025-09-16 22:39:03,417 log Not Found: /favicon.ico
+WARNING 2025-09-16 22:39:03,417 basehttp "GET /favicon.ico HTTP/1.1" 404 3525
+INFO 2025-09-16 22:45:33,650 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 22:45:33,653 basehttp "GET / HTTP/1.1" 200 7232
+WARNING 2025-09-16 22:49:44,141 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2025-09-16 22:49:44,142 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 3636
+INFO 2025-09-16 22:49:47,056 views User 'johnb' loaded the agent page.
+INFO 2025-09-16 22:49:47,061 basehttp "GET / HTTP/1.1" 200 9209
+WARNING 2025-09-16 22:49:47,080 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2025-09-16 22:49:47,080 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 3636
+WARNING 2025-09-16 22:49:47,432 log Not Found: /favicon.ico
+WARNING 2025-09-16 22:49:47,432 basehttp "GET /favicon.ico HTTP/1.1" 404 3525
+INFO 2025-09-16 22:49:47,486 basehttp "GET /sessions/ HTTP/1.1" 200 16
+INFO 2025-09-16 22:50:05,911 basehttp "POST /ask/ HTTP/1.1" 200 473
+INFO 2025-09-16 22:50:05,996 basehttp "GET /sessions/ HTTP/1.1" 200 130
+INFO 2025-09-16 22:58:00,740 autoreload C:\dev\RecruitApp\recruiting\models.py changed, reloading.
+INFO 2025-09-16 22:58:03,211 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 22:58:20,268 autoreload C:\dev\RecruitApp\recruiting\admin.py changed, reloading.
+INFO 2025-09-16 22:58:20,710 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 22:58:25,418 autoreload C:\dev\RecruitApp\recruiting\models.py changed, reloading.
+INFO 2025-09-16 22:58:25,873 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 22:58:47,112 autoreload C:\dev\RecruitApp\recruiting\views.py changed, reloading.
+INFO 2025-09-16 22:58:47,568 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 23:01:58,478 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 23:02:13,318 basehttp "POST /ask/ HTTP/1.1" 200 599
+INFO 2025-09-16 23:02:13,408 basehttp "GET /sessions/ HTTP/1.1" 200 240
+INFO 2025-09-16 23:02:53,794 basehttp "POST /ask/ HTTP/1.1" 200 1211
+INFO 2025-09-16 23:03:39,780 basehttp "POST /ask/ HTTP/1.1" 200 976
+WARNING 2025-09-16 23:07:49,640 log Method Not Allowed (GET): /accounts/logout/
+WARNING 2025-09-16 23:07:49,641 basehttp "GET /accounts/logout/ HTTP/1.1" 405 0
+INFO 2025-09-16 23:13:52,584 autoreload C:\dev\RecruitApp\recruitapp_core\urls.py changed, reloading.
+INFO 2025-09-16 23:13:55,056 autoreload Watching for file changes with StatReloader
+INFO 2025-09-16 23:14:10,092 basehttp "GET /admin/ HTTP/1.1" 200 13796
+INFO 2025-09-16 23:14:10,103 basehttp "GET /static/admin/css/base.css HTTP/1.1" 200 22120
+INFO 2025-09-16 23:14:10,103 basehttp "GET /static/admin/css/dark_mode.css HTTP/1.1" 200 2808
+INFO 2025-09-16 23:14:10,104 basehttp "GET /static/admin/js/theme.js HTTP/1.1" 200 1653
+INFO 2025-09-16 23:14:10,112 basehttp "GET /static/admin/css/responsive.css HTTP/1.1" 200 16565
+INFO 2025-09-16 23:14:10,112 basehttp "GET /static/admin/css/dashboard.css HTTP/1.1" 200 441
+INFO 2025-09-16 23:14:10,112 basehttp "GET /static/admin/css/nav_sidebar.css HTTP/1.1" 200 2810
+INFO 2025-09-16 23:14:10,114 basehttp "GET /static/admin/js/nav_sidebar.js HTTP/1.1" 200 3063
+INFO 2025-09-16 23:14:10,117 basehttp "GET /static/admin/img/icon-changelink.svg HTTP/1.1" 200 380
+INFO 2025-09-16 23:14:10,118 basehttp "GET /static/admin/img/icon-addlink.svg HTTP/1.1" 200 331
+WARNING 2025-09-16 23:14:21,611 log Method Not Allowed (GET): /accounts/logout/
+WARNING 2025-09-16 23:14:21,612 basehttp "GET /accounts/logout/ HTTP/1.1" 405 0
+INFO 2025-09-16 23:14:26,881 basehttp "GET /accounts/logout HTTP/1.1" 301 0
+WARNING 2025-09-16 23:14:26,885 log Method Not Allowed (GET): /accounts/logout/
+WARNING 2025-09-16 23:14:26,885 basehttp "GET /accounts/logout/ HTTP/1.1" 405 0
+WARNING 2025-09-16 23:14:38,524 log Not Found: /logout
+WARNING 2025-09-16 23:14:38,525 basehttp "GET /logout HTTP/1.1" 404 3510
+WARNING 2025-09-16 23:14:47,219 log Not Found: /register
+WARNING 2025-09-16 23:14:47,219 basehttp "GET /register HTTP/1.1" 404 3516
+INFO 2025-09-16 23:14:56,106 basehttp "GET /admin/ HTTP/1.1" 200 13796
+INFO 2025-09-16 23:14:57,664 basehttp "GET /accounts/register/ HTTP/1.1" 200 2158
+WARNING 2025-09-16 23:15:12,482 log Method Not Allowed (GET): /accounts/logout/
+WARNING 2025-09-16 23:15:12,482 basehttp "GET /accounts/logout/ HTTP/1.1" 405 0
+INFO 2025-09-16 23:15:20,802 basehttp "GET /accounts/login/ HTTP/1.1" 200 1036

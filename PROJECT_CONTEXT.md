@@ -21,6 +21,9 @@
             0001_initial.py
             0002_conversation.py
             0003_userprofile.py
+            0004_promptcomponent_is_active_promptcomponent_order.py
+            0005_remove_conversation_session_id_and_more.py
+            0006_conversation_user.py
             __init__.py
 ```
 
@@ -156,11 +159,10 @@ admin.site.register(Conversation)
 ```
 from django.apps import AppConfig
 
-
-class EthosAgentConfig(AppConfig):
+# Change the class name from EthosAgentConfig to RecruitingConfig
+class RecruitingConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'recruiting'
-
 ```
 
 --- 
@@ -194,23 +196,38 @@ class UserProfile(models.Model):
         return self.user.username
 
 class PromptComponent(models.Model):
-    # ... (this model remains the same)
     name = models.CharField(max_length=100, unique=True)
     content = models.TextField()
+    is_active = models.BooleanField(default=True)
+    order = models.IntegerField(default=0, help_text="Lowest numbers are assembled first.")
 
     def __str__(self):
-        return self.name
+        return f"{self.name} (Order: {self.order})"
+
+class ChatSession(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chat_sessions')
+    created_at = models.DateTimeField(auto_now_add=True)
+    title = models.CharField(max_length=200, default='New Chat')
+
+    def __str__(self):
+        return f"{self.user.username}'s Chat on {self.created_at.strftime('%Y-%m-%d')}"
 
 class Conversation(models.Model):
-    # ... (this model remains the same)
-    session_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name='messages', null=True)
+    
+    # This field has been re-added to fix the FieldError
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    
     prompt_text = models.TextField()
     response_text = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.username} - {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
+        user_name = self.user.username if self.user else "Unknown User"
+        if self.session:
+            return f"Message from {user_name} in session {self.session.id} at {self.timestamp.strftime('%H:%M')}"
+        return f"Message from {user_name} at {self.timestamp.strftime('%H:%M')}"
 ```
 
 --- 
@@ -257,8 +274,10 @@ from . import views
 urlpatterns = [
     # The main page, served by the 'index' view
     path('', views.index, name='index'),
-    # The new path for our AI queries, served by the 'ask_agent' view
+    # The path for our AI queries, served by the 'ask_agent' view
     path('ask/', views.ask_agent, name='ask_agent'),
+    # --- ADD THIS NEW PATH FOR THE SESSION HISTORY ---
+    path('sessions/', views.get_chat_sessions, name='get_chat_sessions'),
 ]
 ```
 
@@ -273,7 +292,7 @@ from dotenv import load_dotenv
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
 import json
-from .models import PromptComponent, Conversation, UserProfile
+from .models import PromptComponent, Conversation, UserProfile, ChatSession # Make sure ChatSession is imported
 from .forms import CustomUserCreationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -298,21 +317,42 @@ def index(request):
     logger.info(f"User '{request.user.username}' loaded the agent page.")
     return render(request, 'recruiting/index.html')
 
+# --- THIS ENTIRE FUNCTION HAS BEEN REBUILT ---
 @login_required
 def ask_agent(request):
     if request.method == 'POST':
-        # ... (rest of ask_agent logic is the same)
-        try:
-            core_prompt = PromptComponent.objects.get(name="freya_core_prompt").content
-        except PromptComponent.DoesNotExist:
-            core_prompt = "You are a helpful AI assistant."
         data = json.loads(request.body)
         user_prompt = data.get('prompt')
-        logger.info(f"User '{request.user.username}' submitted a new prompt.")
+        session_id = data.get('session_id') # Get session_id from the request
+
+        # --- SESSION HANDLING LOGIC ---
+        try:
+            if session_id:
+                # If a session_id is provided, fetch the existing session
+                chat_session = ChatSession.objects.get(id=session_id, user=request.user)
+            else:
+                # If no session_id, create a new session, using the first prompt as the title
+                chat_session = ChatSession.objects.create(user=request.user, title=user_prompt[:100])
+        except ChatSession.DoesNotExist:
+            return JsonResponse({'error': 'Invalid session ID'}, status=404)
+        
+        # --- DYNAMIC PROMPT BUILDING (no changes here) ---
+        try:
+            active_components = PromptComponent.objects.filter(is_active=True).order_by('order')
+            core_prompt_parts = [component.content for component in active_components]
+            core_prompt = "\n\n".join(core_prompt_parts)
+            if not core_prompt: raise PromptComponent.DoesNotExist
+        except PromptComponent.DoesNotExist:
+            logger.warning("No active PromptComponents found. Using fallback prompt.")
+            core_prompt = "You are a helpful AI assistant."
+
+        # --- UPDATED HISTORY FETCHING ---
         history = ""
-        recent_conversations = Conversation.objects.filter(user=request.user).order_by('-timestamp')[:5]
-        for conv in reversed(recent_conversations):
+        # Fetch history only from the current session's messages
+        recent_conversations = chat_session.messages.order_by('timestamp').all()[:5]
+        for conv in recent_conversations:
             history += f"Human: {conv.prompt_text}\nAI: {conv.response_text}\n"
+
         user_context = f"The user you are speaking to is named {request.user.username}."
         full_prompt = (
             f"{core_prompt}\n\n"
@@ -320,48 +360,63 @@ def ask_agent(request):
             f"## USER CONTEXT\n{user_context}\n\n"
             f"## CURRENT USER QUERY\n{user_prompt}"
         )
+        
         try:
             response = model.generate_content(full_prompt)
             ai_response_text = response.text
-            logger.info(f"Successfully generated AI response for user '{request.user.username}'.")
+            
+            # --- UPDATED CONVERSATION SAVING ---
+            # Save the new message to the current session and user
             Conversation.objects.create(
-                user=request.user,
+                session=chat_session,
+                user=request.user, 
                 prompt_text=user_prompt,
                 response_text=ai_response_text
             )
-            return JsonResponse({'response': ai_response_text})
+            
+            # --- SEND SESSION_ID BACK TO FRONTEND ---
+            return JsonResponse({'response': ai_response_text, 'session_id': chat_session.id})
+
         except Exception as e:
             logger.error(f"An API error occurred for user '{request.user.username}': {e}")
-            return JsonResponse({'response': f'An error occurred: {e}'})
-    return JsonResponse({'response': 'Invalid request.'})
+            return JsonResponse({'response': f'An error occurred: {e}'}, status=500)
+            
+    return JsonResponse({'error': 'Invalid request method.'}, status=405)
 
+@login_required
+def get_chat_sessions(request):
+    sessions = ChatSession.objects.filter(user=request.user).order_by('-created_at')
+    session_list = [
+        {
+            'id': str(session.id),
+            'title': session.title,
+            'created_at': session.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        } 
+        for session in sessions
+    ]
+    return JsonResponse({'sessions': session_list})
 
 def register(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
-            user.is_active = False # Deactivate account until email confirmation
+            user.is_active = False
             user.save()
             UserProfile.objects.create(user=user)
-
-            # --- Email Verification Logic ---
             token = default_token_generator.make_token(user)
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             verification_link = request.build_absolute_uri(
                 reverse('verify_email', kwargs={'uidb64': uid, 'token': token})
             )
-            
             subject = 'Activate Your RecruitTalk Agent Account'
             message = f'Hello {user.username},\n\nPlease click the link below to verify your email and activate your account:\n\n{verification_link}\n\nThank you.'
             send_mail(subject, message, 'from@example.com', [user.email])
-            
             return HttpResponse("Verification email sent. Please check your email (and the console) to complete registration.")
     else:
         form = CustomUserCreationForm()
     return render(request, 'registration/register.html', {'form': form})
 
-# --- ADD THIS NEW VIEW ---
 def verify_email(request, uidb64, token):
     try:
         uid = force_str(urlsafe_base64_decode(uidb64))
@@ -481,6 +536,113 @@ class Migration(migrations.Migration):
                 ('email_verified', models.BooleanField(default=False)),
                 ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
             ],
+        ),
+    ]
+
+```
+
+--- 
+
+### File: `.\recruiting\migrations\0004_promptcomponent_is_active_promptcomponent_order.py`
+
+```
+# Generated by Django 5.2.5 on 2025-09-17 02:03
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('recruiting', '0003_userprofile'),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name='promptcomponent',
+            name='is_active',
+            field=models.BooleanField(default=True),
+        ),
+        migrations.AddField(
+            model_name='promptcomponent',
+            name='order',
+            field=models.IntegerField(default=0, help_text='Lowest numbers are assembled first.'),
+        ),
+    ]
+
+```
+
+--- 
+
+### File: `.\recruiting\migrations\0005_remove_conversation_session_id_and_more.py`
+
+```
+# Generated by Django 5.2.5 on 2025-09-17 02:59
+
+import django.db.models.deletion
+import uuid
+from django.conf import settings
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('recruiting', '0004_promptcomponent_is_active_promptcomponent_order'),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+    ]
+
+    operations = [
+        migrations.RemoveField(
+            model_name='conversation',
+            name='session_id',
+        ),
+        migrations.RemoveField(
+            model_name='conversation',
+            name='user',
+        ),
+        migrations.CreateModel(
+            name='ChatSession',
+            fields=[
+                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('title', models.CharField(default='New Chat', max_length=200)),
+                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='chat_sessions', to=settings.AUTH_USER_MODEL)),
+            ],
+        ),
+        migrations.AddField(
+            model_name='conversation',
+            name='session',
+            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='messages', to='recruiting.chatsession'),
+        ),
+    ]
+
+```
+
+--- 
+
+### File: `.\recruiting\migrations\0006_conversation_user.py`
+
+```
+# Generated by Django 5.2.5 on 2025-09-17 03:08
+
+import django.db.models.deletion
+from django.conf import settings
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('recruiting', '0005_remove_conversation_session_id_and_more'),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name='conversation',
+            name='user',
+            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL),
         ),
     ]
 
