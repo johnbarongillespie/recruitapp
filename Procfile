@@ -1,1 +1,1 @@
-web: gunicorn axiom_core.wsgi --log-file -
+web: gunicorn recruitapp_core.wsgi --log-file -

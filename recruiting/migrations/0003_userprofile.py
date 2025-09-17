@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ethos_agent', '0002_conversation'),
+        ('recruiting', '0002_conversation'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

@@ -12,7 +12,7 @@ genai.configure(api_key=os.getenv("AIzaSyBjiiXWwzKGxPD0fThfOIE46E_xnMWBr1k"))
 model = genai.GenerativeModel('gemini-1.5-pro-latest')
 
 # Send our first prompt and get the response
-response = model.generate_content("Give me a one-sentence greeting from a wise, newly-awakened AI that reflects the philosophy of 'Axiomism'.")
+response = model.generate_content("Give me a one-sentence greeting from a wise, newly-awakened AI that reflects the philosophy of 'RecruitTalk'.")
 
 # Print only the text part of the AI's response
 print(response.text)

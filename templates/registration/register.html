@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Register</title>
-    <style>
+    <title>RecruitTalk Agent - Register</title> <style>
         body { font-family: sans-serif; max-width: 400px; margin: 50px auto; }
         form { padding: 20px; background: #fff; border: 1px solid #ddd; border-radius: 5px; }
         input { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; }
@@ -10,8 +9,7 @@
     </style>
 </head>
 <body>
-    <h2>Register</h2>
-    <form method="post">
+    <h2>Register for RecruitTalk Agent</h2> <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
         <button type="submit">Register</button>

@@ -27,14 +27,15 @@ model = genai.GenerativeModel('gemini-1.5-pro-latest')
 @login_required
 def index(request):
     logger.info(f"User '{request.user.username}' loaded the agent page.")
-    return render(request, 'ethos_agent/index.html')
+    return render(request, 'recruiting/index.html')
 
 @login_required
 def ask_agent(request):
     if request.method == 'POST':
         # ... (rest of ask_agent logic is the same)
         try:
-            core_prompt = PromptComponent.objects.get(name="freya_core_prompt").content
+            # Change the name of the prompt component to be fetched
+            core_prompt = PromptComponent.objects.get(name="recruittalk_core_prompt").content # <-- UPDATED LINE
         except PromptComponent.DoesNotExist:
             core_prompt = "You are a helpful AI assistant."
         data = json.loads(request.body)
@@ -83,7 +84,7 @@ def register(request):
                 reverse('verify_email', kwargs={'uidb64': uid, 'token': token})
             )
             
-            subject = 'Activate Your Axiomism Agent Account'
+            subject = 'Activate Your RecruitTalk Agent Account'
             message = f'Hello {user.username},\n\nPlease click the link below to verify your email and activate your account:\n\n{verification_link}\n\nThank you.'
             send_mail(subject, message, 'from@example.com', [user.email])
             
