@@ -24,6 +24,7 @@
             0004_promptcomponent_is_active_promptcomponent_order.py
             0005_remove_conversation_session_id_and_more.py
             0006_conversation_user.py
+            0007_sport_playerprofile.py
             __init__.py
 ```
 
@@ -146,10 +147,13 @@ whitenoise==6.9.0
 
 ```
 from django.contrib import admin
-from .models import PromptComponent, Conversation
+from .models import PromptComponent, Conversation, ChatSession, Sport, PlayerProfile
 
 admin.site.register(PromptComponent)
 admin.site.register(Conversation)
+admin.site.register(ChatSession)
+admin.site.register(Sport)
+admin.site.register(PlayerProfile)
 ```
 
 --- 
@@ -204,6 +208,23 @@ class PromptComponent(models.Model):
     def __str__(self):
         return f"{self.name} (Order: {self.order})"
 
+# --- NEW MODEL ---
+class Sport(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
+
+# --- NEW MODEL ---
+class PlayerProfile(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='player_profiles')
+    sport = models.ForeignKey(Sport, on_delete=models.CASCADE)
+    position = models.CharField(max_length=100, blank=True)
+    graduation_year = models.IntegerField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.sport.name} ({self.position or 'N/A'})"
+
 class ChatSession(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chat_sessions')
@@ -215,10 +236,7 @@ class ChatSession(models.Model):
 
 class Conversation(models.Model):
     session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name='messages', null=True)
-    
-    # This field has been re-added to fix the FieldError
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
-    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True) 
     prompt_text = models.TextField()
     response_text = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -274,9 +292,11 @@ from . import views
 urlpatterns = [
     # The main page, served by the 'index' view
     path('', views.index, name='index'),
+
     # The path for our AI queries, served by the 'ask_agent' view
     path('ask/', views.ask_agent, name='ask_agent'),
-    # --- ADD THIS NEW PATH FOR THE SESSION HISTORY ---
+
+    # The path for the session history API
     path('sessions/', views.get_chat_sessions, name='get_chat_sessions'),
 ]
 ```
@@ -292,7 +312,7 @@ from dotenv import load_dotenv
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
 import json
-from .models import PromptComponent, Conversation, UserProfile, ChatSession # Make sure ChatSession is imported
+from .models import PromptComponent, Conversation, UserProfile, ChatSession, PlayerProfile
 from .forms import CustomUserCreationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -303,40 +323,32 @@ from django.core.mail import send_mail
 from django.urls import reverse
 import logging
 
-# Get an instance of a logger
 logger = logging.getLogger(__name__)
 
-# --- Initialization ---
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-1.5-pro-latest')
-# --------------------
 
 @login_required
 def index(request):
     logger.info(f"User '{request.user.username}' loaded the agent page.")
     return render(request, 'recruiting/index.html')
 
-# --- THIS ENTIRE FUNCTION HAS BEEN REBUILT ---
 @login_required
 def ask_agent(request):
     if request.method == 'POST':
         data = json.loads(request.body)
         user_prompt = data.get('prompt')
-        session_id = data.get('session_id') # Get session_id from the request
+        session_id = data.get('session_id')
 
-        # --- SESSION HANDLING LOGIC ---
         try:
             if session_id:
-                # If a session_id is provided, fetch the existing session
                 chat_session = ChatSession.objects.get(id=session_id, user=request.user)
             else:
-                # If no session_id, create a new session, using the first prompt as the title
                 chat_session = ChatSession.objects.create(user=request.user, title=user_prompt[:100])
         except ChatSession.DoesNotExist:
             return JsonResponse({'error': 'Invalid session ID'}, status=404)
         
-        # --- DYNAMIC PROMPT BUILDING (no changes here) ---
         try:
             active_components = PromptComponent.objects.filter(is_active=True).order_by('order')
             core_prompt_parts = [component.content for component in active_components]
@@ -346,16 +358,28 @@ def ask_agent(request):
             logger.warning("No active PromptComponents found. Using fallback prompt.")
             core_prompt = "You are a helpful AI assistant."
 
-        # --- UPDATED HISTORY FETCHING ---
+        # --- NEW: FETCH AND FORMAT LONG-TERM MEMORY ---
+        player_profiles = PlayerProfile.objects.filter(user=request.user)
+        long_term_memory = "## USER'S PLAYER PROFILE (LONG-TERM MEMORY)\n"
+        if player_profiles.exists():
+            for profile in player_profiles:
+                grad_year = profile.graduation_year or 'N/A'
+                position = profile.position or 'N/A'
+                long_term_memory += f"- Sport: {profile.sport.name}, Position: {position}, Grad Year: {grad_year}\n"
+        else:
+            long_term_memory += "No profile information on file.\n"
+
         history = ""
-        # Fetch history only from the current session's messages
         recent_conversations = chat_session.messages.order_by('timestamp').all()[:5]
         for conv in recent_conversations:
             history += f"Human: {conv.prompt_text}\nAI: {conv.response_text}\n"
 
         user_context = f"The user you are speaking to is named {request.user.username}."
+        
+        # --- UPDATED FULL PROMPT ---
         full_prompt = (
             f"{core_prompt}\n\n"
+            f"{long_term_memory}\n\n"
             f"## RECENT CONVERSATION HISTORY\n{history}\n\n"
             f"## USER CONTEXT\n{user_context}\n\n"
             f"## CURRENT USER QUERY\n{user_prompt}"
@@ -365,8 +389,6 @@ def ask_agent(request):
             response = model.generate_content(full_prompt)
             ai_response_text = response.text
             
-            # --- UPDATED CONVERSATION SAVING ---
-            # Save the new message to the current session and user
             Conversation.objects.create(
                 session=chat_session,
                 user=request.user, 
@@ -374,9 +396,7 @@ def ask_agent(request):
                 response_text=ai_response_text
             )
             
-            # --- SEND SESSION_ID BACK TO FRONTEND ---
             return JsonResponse({'response': ai_response_text, 'session_id': chat_session.id})
-
         except Exception as e:
             logger.error(f"An API error occurred for user '{request.user.username}': {e}")
             return JsonResponse({'response': f'An error occurred: {e}'}, status=500)
@@ -643,6 +663,47 @@ class Migration(migrations.Migration):
             model_name='conversation',
             name='user',
             field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL),
+        ),
+    ]
+
+```
+
+--- 
+
+### File: `.\recruiting\migrations\0007_sport_playerprofile.py`
+
+```
+# Generated by Django 5.2.5 on 2025-09-17 03:59
+
+import django.db.models.deletion
+from django.conf import settings
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('recruiting', '0006_conversation_user'),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name='Sport',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('name', models.CharField(max_length=100, unique=True)),
+            ],
+        ),
+        migrations.CreateModel(
+            name='PlayerProfile',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('position', models.CharField(blank=True, max_length=100)),
+                ('graduation_year', models.IntegerField(blank=True, null=True)),
+                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='player_profiles', to=settings.AUTH_USER_MODEL)),
+                ('sport', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='recruiting.sport')),
+            ],
         ),
     ]
 

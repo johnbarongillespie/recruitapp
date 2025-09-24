@@ -1,0 +1,89 @@
+{% load static %}
+{% load socialaccount %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Teko:wght@700&display=swap" rel="stylesheet">
+    <title>RecruitTalk</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            color: white;
+            background-color: #1a1a1a;
+        }
+        .hero-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url("{% static 'recruiting/images/hero-background.jpg' %}");
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            text-align: center;
+        }
+        .content-box {
+            padding: 40px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+        .title {
+            font-family: 'Teko', sans-serif;
+            font-size: 10vw;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            margin: 0;
+            line-height: 1;
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            margin-top: 10px;
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px; /* Space between buttons */
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            border: 2px solid #fff;
+            border-radius: 5px;
+            background-color: transparent;
+            color: #fff;
+            text-decoration: none;
+            font-weight: 700;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .btn:hover {
+            background-color: #fff;
+            color: #2c2c2c;
+        }
+        .google-btn {
+            background-color: #fff;
+            color: #444;
+        }
+    </style>
+</head>
+<body>
+    <div class="hero-container">
+        <div class="content-box">
+            <h1 class="title">RECRUIT TALK</h1>
+            <p class="subtitle">Your Path to College Sports Starts Here.</p>
+            <div class="button-container">
+                <a href="{% url 'account_login' %}" class="btn">Login</a>
+                <a href="{% url 'account_signup' %}" class="btn">Register</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
