@@ -1,6 +1,7 @@
 import os
 import vertexai
-from vertexai.generative_models import GenerativeModel
+# 1. Add Content and Part to your imports
+from vertexai.generative_models import GenerativeModel, Content, Part
 from dotenv import load_dotenv
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
@@ -23,7 +24,6 @@ load_dotenv()
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 vertexai.init(project=PROJECT_ID, location=LOCATION)
-# Global model initialization has been removed from here.
 # ------------------------------------
 
 def landing_page(request):
@@ -37,7 +37,6 @@ def index(request):
 @login_required
 def ask_agent(request):
     if request.method == 'POST':
-        # Get the system instruction from the database first.
         try:
             prompt_name = os.getenv('PROMPT_COMPONENT_NAME', 'recruiter_core_prompt')
             core_prompt = PromptComponent.objects.get(name=prompt_name).content
@@ -45,7 +44,6 @@ def ask_agent(request):
             logger.warning(f"PromptComponent '{prompt_name}' not found. Using fallback.")
             core_prompt = "You are a helpful AI assistant."
         
-        # Initialize the model INSIDE the view with the system instruction.
         model = GenerativeModel(
             "gemini-2.5-pro",
             system_instruction=[core_prompt]
@@ -65,16 +63,16 @@ def ask_agent(request):
 
         logger.info(f"User '{request.user.username}' submitted a new prompt in session {chat_session.id}.")
 
+        # 2. Rebuild the history using Content and Part objects
         history = []
         recent_conversations = chat_session.messages.order_by('timestamp').all()[:10]
         for conv in recent_conversations:
-            history.append({"role": "user", "parts": [{"text": conv.prompt_text}]})
-            history.append({"role": "model", "parts": [{"text": conv.response_text}]})
+            history.append(Content(role="user", parts=[Part.from_text(conv.prompt_text)]))
+            history.append(Content(role="model", parts=[Part.from_text(conv.response_text)]))
         
         chat = model.start_chat(history=history)
 
         try:
-            # Remove the incorrect 'generation_config' from the send_message call.
             response = chat.send_message(user_prompt)
             ai_response_text = response.text
 
