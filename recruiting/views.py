@@ -1,6 +1,5 @@
 import os
 import vertexai
-# 1. Add Content and Part to your imports
 from vertexai.generative_models import GenerativeModel, Content, Part
 from dotenv import load_dotenv
 from django.shortcuts import render, redirect
@@ -63,9 +62,9 @@ def ask_agent(request):
 
         logger.info(f"User '{request.user.username}' submitted a new prompt in session {chat_session.id}.")
 
-        # 2. Rebuild the history using Content and Part objects
         history = []
-        recent_conversations = chat_session.messages.order_by('timestamp').all()[:10]
+        # --- UPDATE THIS LINE TO BE MORE EFFICIENT ---
+        recent_conversations = chat_session.messages.select_related('user').order_by('timestamp')[:10]
         for conv in recent_conversations:
             history.append(Content(role="user", parts=[Part.from_text(conv.prompt_text)]))
             history.append(Content(role="model", parts=[Part.from_text(conv.response_text)]))
@@ -100,6 +99,7 @@ def get_chat_sessions(request):
     return JsonResponse({'sessions': session_list})
 
 def register(request):
+    # Function remains the same
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
@@ -121,6 +121,7 @@ def register(request):
     return render(request, 'registration/register.html', {'form': form})
 
 def verify_email(request, uidb64, token):
+    # Function remains the same
     try:
         uid = force_str(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)

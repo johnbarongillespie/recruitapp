@@ -18,14 +18,12 @@ class PromptComponent(models.Model):
     def __str__(self):
         return f"{self.name} (Order: {self.order})"
 
-# --- NEW MODEL ---
 class Sport(models.Model):
     name = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
         return self.name
 
-# --- NEW MODEL ---
 class PlayerProfile(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='player_profiles')
     sport = models.ForeignKey(Sport, on_delete=models.CASCADE)
@@ -56,3 +54,9 @@ class Conversation(models.Model):
         if self.session:
             return f"Message from {user_name} in session {self.session.id} at {self.timestamp.strftime('%H:%M')}"
         return f"Message from {user_name} at {self.timestamp.strftime('%H:%M')}"
+
+    # --- ADD THIS META CLASS FOR THE INDEX ---
+    class Meta:
+        indexes = [
+            models.Index(fields=['session', 'timestamp']),
+        ]
