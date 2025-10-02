@@ -1,0 +1,49 @@
+services:
+  # 1. The Redis instance for Celery
+  - name: recruitapp-redis
+    type: redis
+    plan: free # Can be upgraded later if needed
+
+  # 2. The Django Web Server (Gunicorn)
+  - name: recruitapp-web
+    type: web
+    env: python
+    plan: starter # Use at least the 'Starter' plan for this multi-service setup
+    buildCommand: |
+      pip install -r requirements.txt
+      python manage.py migrate
+    startCommand: "gunicorn recruitapp_core.wsgi"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: recruitapp-db # Use the name of your existing Postgres database
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: recruitapp-redis
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.12.0 # Match your local Python version
+      # IMPORTANT: Add your secrets (SECRET_KEY, Google creds, etc.) 
+      # in the Render dashboard after deployment.
+
+  # 3. The Celery Background Worker
+  - name: recruitapp-worker
+    type: worker
+    env: python
+    plan: starter
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "celery -A recruitapp_core worker --loglevel=info"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: recruitapp-db # Use the name of your existing Postgres database
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: recruitapp-redis
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.12.0

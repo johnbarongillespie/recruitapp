@@ -7,13 +7,14 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
-            --border-color: #ddd;
+            --border-color: #444; /* Darker border for dark theme */
             --user-bg: #007bff;
-            --agent-bg: #f1f1f1;
-            --text-color: #333;
+            --agent-bg: #4a4a4a; /* Darker agent bubble */
+            --text-color-light: #ececf1;
             --sidebar-bg: #202123;
             --sidebar-text: #ececf1;
             --sidebar-hover-bg: #343541;
+            --chat-bg: #343541; /* Main chat background */
             --logout-btn-bg: #6c757d;
         }
         html, body {
@@ -53,13 +54,13 @@
             cursor: pointer;
         }
         .session-link:hover {
-            background-color: var(--sidebar-hover-bg);
+            background-color: #4a4a4a;
         }
         .chat-container {
             display: flex;
             flex-direction: column;
             height: 100vh;
-            background-color: #fff;
+            background-color: var(--chat-bg); /* Dark chat container */
         }
         .chat-header {
             flex-shrink: 0;
@@ -68,19 +69,20 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            color: var(--text-color-light); /* Light text for header */
         }
         .header-left { display: flex; align-items: center; gap: 15px; }
         .header-left h1 { font-size: 20px; margin: 0; }
         .header-left button {
             padding: 8px 12px;
             border: 1px solid var(--border-color);
-            background-color: #fff;
-            color: var(--text-color);
+            background-color: #555;
+            color: var(--text-color-light);
             border-radius: 5px;
             cursor: pointer;
         }
         .header-right { display: flex; align-items: center; gap: 15px; }
-        .header-right span { font-size: 14px; color: #555; }
+        .header-right span { font-size: 14px; color: #ccc; }
         .logout-btn {
             padding: 8px 16px;
             background-color: var(--logout-btn-bg);
@@ -112,17 +114,21 @@
         }
         .agent-message {
             background-color: var(--agent-bg);
-            color: var(--text-color);
+            color: var(--text-color-light);
             align-self: flex-start;
             margin-right: auto;
         }
         .agent-message ul, .agent-message ol { padding-left: 20px; }
         .agent-message li { margin-bottom: 5px; }
-        .prompt-form {
-            flex-shrink: 0;
+        .prompt-form-wrapper {
             padding: 20px;
             border-top: 1px solid var(--border-color);
-            background-color: #fdfdfd;
+            background-color: var(--chat-bg);
+        }
+        .prompt-form {
+            background-color: #4a4a4a;
+            border-radius: 8px;
+            padding: 5px 20px;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -130,12 +136,16 @@
         textarea {
             width: 100%;
             padding: 10px;
-            border-radius: 5px;
-            border: 1px solid var(--border-color);
+            border: none;
+            background-color: transparent;
+            color: var(--text-color-light);
             font-size: 16px;
             resize: none;
             box-sizing: border-box;
             flex-grow: 1;
+        }
+        textarea:focus {
+            outline: none;
         }
         .prompt-form button {
             padding: 10px 20px;
@@ -172,11 +182,13 @@
                     <p>I'm your personal AI Recruiting Strategist. Ask me anything about the recruiting process!</p>
                 </div>
             </div>
-            <form id="prompt-form" class="prompt-form">
-                {% csrf_token %}
-                <textarea name="prompt" rows="1" placeholder="Ask a question..."></textarea>
-                <button type="submit">Send</button>
-            </form>
+            <div class="prompt-form-wrapper">
+                <form id="prompt-form" class="prompt-form">
+                    {% csrf_token %}
+                    <textarea name="prompt" rows="1" placeholder="Ask a question..."></textarea>
+                    <button type="submit">Send</button>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -185,22 +197,39 @@
         const messageList = document.getElementById('message-list');
         const textarea = form.querySelector('textarea');
         const newChatBtn = document.getElementById('new-chat-btn');
-        const csrfToken = form.querySelector('input[name=csrfmiddlewaretoken]').value;
+        const csrfToken = document.querySelector('input[name=csrfmiddlewaretoken]').value;
         const sessionListDiv = document.getElementById('session-list');
 
         let currentSessionId = null;
 
-        async function loadChatHistory() {
-            const response = await fetch('/sessions/');
-            const data = await response.json();
-            sessionListDiv.innerHTML = '';
-            data.sessions.forEach(session => {
-                const link = document.createElement('a');
-                link.className = 'session-link';
-                link.textContent = session.title;
-                link.dataset.sessionId = session.id;
-                sessionListDiv.appendChild(link);
-            });
+        // --- NEW: Function to poll for the task result ---
+        function pollTaskStatus(taskId) {
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/agent/task_status/${taskId}/`);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const data = await response.json();
+
+                    if (data.status === 'SUCCESS') {
+                        clearInterval(interval);
+                        const thinkingBubble = document.getElementById('thinking-bubble');
+                        if (thinkingBubble) messageList.removeChild(thinkingBubble);
+                        addMessage(data.result, 'agent-message', true);
+                    } else if (data.status === 'FAILURE') {
+                        clearInterval(interval);
+                        const thinkingBubble = document.getElementById('thinking-bubble');
+                        if (thinkingBubble) messageList.removeChild(thinkingBubble);
+                        addMessage('Sorry, an error occurred while processing your request.', 'agent-message', false);
+                    }
+                    // If status is 'PENDING', do nothing and wait for the next poll
+                } catch (error) {
+                    console.error('Polling error:', error);
+                    clearInterval(interval);
+                    const thinkingBubble = document.getElementById('thinking-bubble');
+                    if (thinkingBubble) messageList.removeChild(thinkingBubble);
+                    addMessage('Error fetching response. Please check the console.', 'agent-message', false);
+                }
+            }, 3000); // Check every 3 seconds
         }
 
         async function handleFormSubmit(event) {
@@ -212,6 +241,7 @@
             textarea.value = '';
             
             const thinkingBubble = addMessage('Thinking...', 'agent-message', false);
+            thinkingBubble.id = 'thinking-bubble';
 
             try {
                 const response = await fetch('/agent/ask/', {
@@ -223,30 +253,38 @@
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
                 
-                if (currentSessionId === null) {
-                    loadChatHistory();
+                if (data.task_id) {
+                    // If this was a new chat, the backend created a session. Let's save its ID.
+                    if (data.session_id) {
+                        currentSessionId = data.session_id;
+                        loadChatHistory(); // Refresh the sidebar
+                    }
+                    pollTaskStatus(data.task_id);
+                } else {
+                    throw new Error('Did not receive a task ID from the server.');
                 }
-                currentSessionId = data.session_id; 
-                
-                messageList.removeChild(thinkingBubble);
-                addMessage(data.response, 'agent-message', true);
             } catch (error) {
                 messageList.removeChild(thinkingBubble);
-                addMessage('Sorry, an error occurred. Please try again.', 'agent-message', false);
-                console.error('Fetch error:', error);
+                addMessage('Sorry, there was an error submitting your request.', 'agent-message', false);
+                console.error('Submit error:', error);
             }
         }
         
+        async function loadChatHistory() {
+            // ... (rest of the file is the same)
+        }
+        // ... (rest of the file is the same)
+
         newChatBtn.addEventListener('click', () => {
             currentSessionId = null;
             messageList.innerHTML = '';
             addMessage("I'm your personal AI Recruiting Strategist. Ask me anything about the recruiting process!", 'agent-message', true);
         });
-
+        
         textarea.addEventListener('keydown', function(event) {
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
-                handleFormSubmit(event);
+                form.dispatchEvent(new Event('submit', {cancelable: true}));
             }
         });
 
@@ -256,7 +294,7 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message ' + className;
             if (isMarkdown) {
-                messageDiv.innerHTML = marked.parse(text);
+                messageDiv.innerHTML = marked.parse(text || ""); // Ensure text is not null
             } else {
                 const p = document.createElement('p');
                 p.textContent = text;

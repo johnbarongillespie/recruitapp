@@ -26,6 +26,9 @@
             0006_conversation_user.py
             0007_sport_playerprofile.py
             __init__.py
+    static/
+        recruiting/
+            images/
 ```
 
 ## File Contents
@@ -98,47 +101,7 @@ web: gunicorn recruitapp_core.wsgi --log-file -
 ### File: `.\requirements.txt`
 
 ```
-﻿annotated-types==0.7.0
-asgiref==3.9.1
-cachetools==5.5.2
-certifi==2025.8.3
-charset-normalizer==3.4.3
-colorama==0.4.6
-dj-database-url==3.0.1
-Django==5.2.5
-google-ai-generativelanguage==0.6.15
-google-api-core==2.25.1
-google-api-python-client==2.179.0
-google-auth==2.40.3
-google-auth-httplib2==0.2.0
-google-generativeai==0.8.5
-googleapis-common-protos==1.70.0
-grpcio==1.74.0
-grpcio-status==1.71.2
-gunicorn==23.0.0
-httplib2==0.30.0
-idna==3.10
-packaging==25.0
-proto-plus==1.26.1
-protobuf==5.29.5
-psycopg2-binary==2.9.10
-pyasn1==0.6.1
-pyasn1_modules==0.4.2
-pydantic==2.11.7
-pydantic_core==2.33.2
-pyparsing==3.2.3
-python-dotenv==1.1.1
-requests==2.32.5
-rsa==4.9.1
-sqlparse==0.5.3
-tqdm==4.67.1
-typing-inspection==0.4.1
-typing_extensions==4.15.0
-tzdata==2025.2
-uritemplate==4.2.0
-urllib3==2.5.0
-whitenoise==6.9.0
-
+Error reading file: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
 ```
 
 --- 
@@ -286,18 +249,24 @@ class AgentViewTests(TestCase):
 ### File: `.\recruiting\urls.py`
 
 ```
-from django.urls import path
+from django.urls import path, include
 from . import views
 
 urlpatterns = [
-    # The main page, served by the 'index' view
-    path('', views.index, name='index'),
+    # The root path now serves our landing page
+    path('', views.landing_page, name='landing_page'),
+    
+    # The path for our main agent/chat interface
+    path('agent/', views.index, name='index'),
 
-    # The path for our AI queries, served by the 'ask_agent' view
-    path('ask/', views.ask_agent, name='ask_agent'),
-
-    # The path for the session history API
+    # The path for our AI's API endpoint
+    path('agent/ask/', views.ask_agent, name='ask_agent'),
+    
+    # The path for the session history API (from your existing file)
     path('sessions/', views.get_chat_sessions, name='get_chat_sessions'),
+
+    # This single line includes all of allauth's URLs (login, logout, signup, etc.)
+    path('accounts/', include('allauth.urls')),
 ]
 ```
 
@@ -307,7 +276,8 @@ urlpatterns = [
 
 ```
 import os
-import google.generativeai as genai
+import vertexai
+from vertexai.generative_models import GenerativeModel
 from dotenv import load_dotenv
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
@@ -325,9 +295,16 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# --- Vertex AI Initialization ---
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel('gemini-1.5-pro-latest')
+PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
+LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+vertexai.init(project=PROJECT_ID, location=LOCATION)
+model = GenerativeModel("gemini-1.5-pro")
+# ------------------------------------
+
+def landing_page(request):
+    return render(request, 'recruiting/landing_page.html')
 
 @login_required
 def index(request):
@@ -337,10 +314,17 @@ def index(request):
 @login_required
 def ask_agent(request):
     if request.method == 'POST':
+        try:
+            prompt_name = os.getenv('PROMPT_COMPONENT_NAME', 'recruiter_core_prompt')
+            core_prompt = PromptComponent.objects.get(name=prompt_name).content
+        except PromptComponent.DoesNotExist:
+            logger.warning(f"PromptComponent '{prompt_name}' not found. Using fallback.")
+            core_prompt = "You are a helpful AI assistant."
+        
         data = json.loads(request.body)
         user_prompt = data.get('prompt')
         session_id = data.get('session_id')
-
+        
         try:
             if session_id:
                 chat_session = ChatSession.objects.get(id=session_id, user=request.user)
@@ -348,50 +332,26 @@ def ask_agent(request):
                 chat_session = ChatSession.objects.create(user=request.user, title=user_prompt[:100])
         except ChatSession.DoesNotExist:
             return JsonResponse({'error': 'Invalid session ID'}, status=404)
-        
-        try:
-            active_components = PromptComponent.objects.filter(is_active=True).order_by('order')
-            core_prompt_parts = [component.content for component in active_components]
-            core_prompt = "\n\n".join(core_prompt_parts)
-            if not core_prompt: raise PromptComponent.DoesNotExist
-        except PromptComponent.DoesNotExist:
-            logger.warning("No active PromptComponents found. Using fallback prompt.")
-            core_prompt = "You are a helpful AI assistant."
 
-        # --- NEW: FETCH AND FORMAT LONG-TERM MEMORY ---
-        player_profiles = PlayerProfile.objects.filter(user=request.user)
-        long_term_memory = "## USER'S PLAYER PROFILE (LONG-TERM MEMORY)\n"
-        if player_profiles.exists():
-            for profile in player_profiles:
-                grad_year = profile.graduation_year or 'N/A'
-                position = profile.position or 'N/A'
-                long_term_memory += f"- Sport: {profile.sport.name}, Position: {position}, Grad Year: {grad_year}\n"
-        else:
-            long_term_memory += "No profile information on file.\n"
+        logger.info(f"User '{request.user.username}' submitted a new prompt in session {chat_session.id}.")
 
-        history = ""
-        recent_conversations = chat_session.messages.order_by('timestamp').all()[:5]
+        history = []
+        recent_conversations = chat_session.messages.order_by('timestamp').all()[:10]
         for conv in recent_conversations:
-            history += f"Human: {conv.prompt_text}\nAI: {conv.response_text}\n"
+            history.append({"role": "user", "parts": [{"text": conv.prompt_text}]})
+            history.append({"role": "model", "parts": [{"text": conv.response_text}]})
+        
+        chat = model.start_chat(history=history)
 
-        user_context = f"The user you are speaking to is named {request.user.username}."
-        
-        # --- UPDATED FULL PROMPT ---
-        full_prompt = (
-            f"{core_prompt}\n\n"
-            f"{long_term_memory}\n\n"
-            f"## RECENT CONVERSATION HISTORY\n{history}\n\n"
-            f"## USER CONTEXT\n{user_context}\n\n"
-            f"## CURRENT USER QUERY\n{user_prompt}"
-        )
-        
+        system_instruction = core_prompt
+
         try:
-            response = model.generate_content(full_prompt)
+            response = chat.send_message(user_prompt, generation_config={"system_instruction": system_instruction})
             ai_response_text = response.text
-            
+
             Conversation.objects.create(
                 session=chat_session,
-                user=request.user, 
+                user=request.user,
                 prompt_text=user_prompt,
                 response_text=ai_response_text
             )
@@ -400,21 +360,19 @@ def ask_agent(request):
         except Exception as e:
             logger.error(f"An API error occurred for user '{request.user.username}': {e}")
             return JsonResponse({'response': f'An error occurred: {e}'}, status=500)
-            
+
     return JsonResponse({'error': 'Invalid request method.'}, status=405)
 
+# --- ADD THIS MISSING FUNCTION ---
 @login_required
 def get_chat_sessions(request):
     sessions = ChatSession.objects.filter(user=request.user).order_by('-created_at')
     session_list = [
-        {
-            'id': str(session.id),
-            'title': session.title,
-            'created_at': session.created_at.strftime('%Y-%m-%d %H:%M:%S')
-        } 
+        {'id': str(session.id), 'title': session.title} 
         for session in sessions
     ]
     return JsonResponse({'sessions': session_list})
+# ---------------------------------
 
 def register(request):
     if request.method == 'POST':
