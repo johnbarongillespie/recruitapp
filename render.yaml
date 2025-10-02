@@ -2,13 +2,16 @@ services:
   # 1. The Redis instance for Celery
   - name: recruitapp-redis
     type: redis
-    plan: free # Can be upgraded later if needed
+    plan: free
+    # --- FIX: Added required ipAllowList property ---
+    ipAllowList: [] # Allows connections from other Render services
 
   # 2. The Django Web Server (Gunicorn)
   - name: recruitapp-web
+    # --- FIX: Changed 'env' to 'runtime' ---
+    runtime: python
     type: web
-    env: python
-    plan: starter # Use at least the 'Starter' plan for this multi-service setup
+    plan: starter
     buildCommand: |
       pip install -r requirements.txt
       python manage.py migrate
@@ -24,14 +27,13 @@ services:
           name: recruitapp-redis
           property: connectionString
       - key: PYTHON_VERSION
-        value: 3.12.0 # Match your local Python version
-      # IMPORTANT: Add your secrets (SECRET_KEY, Google creds, etc.) 
-      # in the Render dashboard after deployment.
+        value: "3.13.7"
 
   # 3. The Celery Background Worker
   - name: recruitapp-worker
+    # --- FIX: Changed 'env' to 'runtime' ---
+    runtime: python
     type: worker
-    env: python
     plan: starter
     buildCommand: "pip install -r requirements.txt"
     startCommand: "celery -A recruitapp_core worker --loglevel=info"
@@ -46,4 +48,4 @@ services:
           name: recruitapp-redis
           property: connectionString
       - key: PYTHON_VERSION
-        value: 3.12.0
+        value: "3.13.7"
