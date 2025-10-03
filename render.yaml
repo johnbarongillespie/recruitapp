@@ -1,7 +1,7 @@
 services:
   # Define the Database as part of the Blueprint
   - name: recruitapp-blueprint-db
-    type: psql
+    type: postgresMajorVersion:17 
     region: ohio
     plan: free
 
