@@ -1,13 +1,13 @@
 databases:
   - name: recruitapp-db
-    plan: Basic-1gb
-    region: ohio
+    plan: starter
+    region: oregon
 
 services:
   # Redis is a "service", not a "database"
   - name: recruitapp-redis
     type: redis
-    region: ohio
+    region: oregon
     plan: free
     ipAllowList: []
 
@@ -15,7 +15,7 @@ services:
   - name: recruitapp-web
     type: web
     runtime: python
-    region: ohio
+    region: oregon
     plan: starter
     buildCommand: |
       pip install -r requirements.txt
@@ -28,8 +28,7 @@ services:
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
-          # --- FIX: Added the required service type ---
-          type: redis
+          type: redis 
           name: recruitapp-redis
           property: connectionString
       - key: PYTHON_VERSION
@@ -39,7 +38,7 @@ services:
   - name: recruitapp-worker
     type: worker
     runtime: python
-    region: ohio
+    region: oregon
     plan: starter
     buildCommand: "pip install -r requirements.txt"
     startCommand: "celery -A recruitapp_core worker --loglevel=info --concurrency=3"
@@ -50,7 +49,6 @@ services:
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
-          # --- FIX: Added the required service type ---
           type: redis
           name: recruitapp-redis
           property: connectionString
