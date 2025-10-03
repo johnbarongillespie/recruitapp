@@ -4,15 +4,14 @@
 
 ```
 ./
-    agent.py
     manage.py
-    Procfile
     requirements.txt
     recruiting/
         admin.py
         apps.py
         forms.py
         models.py
+        tasks.py
         tests.py
         urls.py
         views.py
@@ -25,6 +24,7 @@
             0005_remove_conversation_session_id_and_more.py
             0006_conversation_user.py
             0007_sport_playerprofile.py
+            0008_conversation_recruiting__session_35ea8c_idx.py
             __init__.py
     static/
         recruiting/
@@ -32,31 +32,6 @@
 ```
 
 ## File Contents
-
---- 
-
-### File: `.\agent.py`
-
-```
-import os
-import google.generativeai as genai
-from dotenv import load_dotenv
-
-# Load the environment variables from the .env file
-load_dotenv()
-
-# Configure the API key from the environment variable
-genai.configure(api_key=os.getenv("AIzaSyBjiiXWwzKGxPD0fThfOIE46E_xnMWBr1k"))
-
-# Initialize the model we want to use
-model = genai.GenerativeModel('gemini-1.5-pro-latest')
-
-# Send our first prompt and get the response
-response = model.generate_content("Give me a one-sentence greeting from a wise, newly-awakened AI that reflects the philosophy of 'RecruitTalk'.")
-
-# Print only the text part of the AI's response
-print(response.text)
-```
 
 --- 
 
@@ -86,14 +61,6 @@ def main():
 if __name__ == '__main__':
     main()
 
-```
-
---- 
-
-### File: `.\Procfile`
-
-```
-web: gunicorn recruitapp_core.wsgi --log-file -
 ```
 
 --- 
@@ -171,14 +138,12 @@ class PromptComponent(models.Model):
     def __str__(self):
         return f"{self.name} (Order: {self.order})"
 
-# --- NEW MODEL ---
 class Sport(models.Model):
     name = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
         return self.name
 
-# --- NEW MODEL ---
 class PlayerProfile(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='player_profiles')
     sport = models.ForeignKey(Sport, on_delete=models.CASCADE)
@@ -209,6 +174,65 @@ class Conversation(models.Model):
         if self.session:
             return f"Message from {user_name} in session {self.session.id} at {self.timestamp.strftime('%H:%M')}"
         return f"Message from {user_name} at {self.timestamp.strftime('%H:%M')}"
+
+    # --- ADD THIS META CLASS FOR THE INDEX ---
+    class Meta:
+        indexes = [
+            models.Index(fields=['session', 'timestamp']),
+        ]
+```
+
+--- 
+
+### File: `.\recruiting\tasks.py`
+
+```
+import os
+import vertexai
+from celery import shared_task
+from vertexai.generative_models import GenerativeModel, Content, Part
+from .models import Conversation, ChatSession
+
+# --- THIS BLOCK NOW RUNS ONLY ONCE WHEN THE WORKER PROCESS STARTS ---
+# This initializes the connection to Google Cloud, which is the slow part.
+PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
+LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+vertexai.init(project=PROJECT_ID, location=LOCATION)
+# -------------------------------------------------------------------
+
+@shared_task
+def get_ai_response(user_prompt, core_prompt, history_dicts, session_id, user_id):
+    """
+    A background task to get a response from the Vertex AI API.
+    """
+    try:
+        # The model is now created inside the task, which is fast.
+        # This allows it to use the specific core_prompt for this request.
+        model = GenerativeModel(
+            "gemini-2.5-pro",
+            system_instruction=[core_prompt]
+        )
+        
+        # Recreate the Content objects from the dictionary representation
+        history = [Content(role=item['role'], parts=[Part.from_text(p['text']) for p in item['parts']]) for item in history_dicts]
+        
+        chat = model.start_chat(history=history)
+        response = chat.send_message(user_prompt)
+        ai_response_text = response.text
+
+        # Save the conversation to the database AFTER getting a response
+        chat_session = ChatSession.objects.get(id=session_id)
+        Conversation.objects.create(
+            session=chat_session,
+            user_id=user_id,
+            prompt_text=user_prompt,
+            response_text=ai_response_text
+        )
+
+        return ai_response_text
+    except Exception as e:
+        # Handle exceptions and return an error message
+        return f"An error occurred: {str(e)}"
 ```
 
 --- 
@@ -259,10 +283,13 @@ urlpatterns = [
     # The path for our main agent/chat interface
     path('agent/', views.index, name='index'),
 
-    # The path for our AI's API endpoint
+    # The path for our AI's API endpoint (starts the background task)
     path('agent/ask/', views.ask_agent, name='ask_agent'),
+
+    # The new path for checking the status of a background task
+    path('agent/task_status/<str:task_id>/', views.get_task_status, name='get_task_status'),
     
-    # The path for the session history API (from your existing file)
+    # The path for the session history API
     path('sessions/', views.get_chat_sessions, name='get_chat_sessions'),
 
     # This single line includes all of allauth's URLs (login, logout, signup, etc.)
@@ -277,7 +304,7 @@ urlpatterns = [
 ```
 import os
 import vertexai
-from vertexai.generative_models import GenerativeModel
+from vertexai.generative_models import GenerativeModel, Content, Part
 from dotenv import load_dotenv
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
@@ -292,15 +319,13 @@ from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 from django.urls import reverse
 import logging
+from celery.result import AsyncResult
+from .tasks import get_ai_response
 
 logger = logging.getLogger(__name__)
 
 # --- Vertex AI Initialization ---
 load_dotenv()
-PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
-LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-vertexai.init(project=PROJECT_ID, location=LOCATION)
-model = GenerativeModel("gemini-1.5-pro")
 # ------------------------------------
 
 def landing_page(request):
@@ -314,13 +339,6 @@ def index(request):
 @login_required
 def ask_agent(request):
     if request.method == 'POST':
-        try:
-            prompt_name = os.getenv('PROMPT_COMPONENT_NAME', 'recruiter_core_prompt')
-            core_prompt = PromptComponent.objects.get(name=prompt_name).content
-        except PromptComponent.DoesNotExist:
-            logger.warning(f"PromptComponent '{prompt_name}' not found. Using fallback.")
-            core_prompt = "You are a helpful AI assistant."
-        
         data = json.loads(request.body)
         user_prompt = data.get('prompt')
         session_id = data.get('session_id')
@@ -330,40 +348,47 @@ def ask_agent(request):
                 chat_session = ChatSession.objects.get(id=session_id, user=request.user)
             else:
                 chat_session = ChatSession.objects.create(user=request.user, title=user_prompt[:100])
+                session_id = chat_session.id
         except ChatSession.DoesNotExist:
             return JsonResponse({'error': 'Invalid session ID'}, status=404)
 
-        logger.info(f"User '{request.user.username}' submitted a new prompt in session {chat_session.id}.")
-
-        history = []
-        recent_conversations = chat_session.messages.order_by('timestamp').all()[:10]
-        for conv in recent_conversations:
-            history.append({"role": "user", "parts": [{"text": conv.prompt_text}]})
-            history.append({"role": "model", "parts": [{"text": conv.response_text}]})
-        
-        chat = model.start_chat(history=history)
-
-        system_instruction = core_prompt
-
         try:
-            response = chat.send_message(user_prompt, generation_config={"system_instruction": system_instruction})
-            ai_response_text = response.text
+            prompt_name = os.getenv('PROMPT_COMPONENT_NAME', 'recruiter_core_prompt')
+            core_prompt = PromptComponent.objects.get(name=prompt_name).content
+        except PromptComponent.DoesNotExist:
+            logger.warning(f"PromptComponent '{prompt_name}' not found. Using fallback.")
+            core_prompt = "You are a helpful AI assistant."
 
-            Conversation.objects.create(
-                session=chat_session,
-                user=request.user,
-                prompt_text=user_prompt,
-                response_text=ai_response_text
-            )
-            
-            return JsonResponse({'response': ai_response_text, 'session_id': chat_session.id})
-        except Exception as e:
-            logger.error(f"An API error occurred for user '{request.user.username}': {e}")
-            return JsonResponse({'response': f'An error occurred: {e}'}, status=500)
+        history_dicts = []
+        recent_conversations = chat_session.messages.select_related('user').order_by('timestamp')[:10]
+        for conv in recent_conversations:
+            history_dicts.append({"role": "user", "parts": [{"text": conv.prompt_text}]})
+            history_dicts.append({"role": "model", "parts": [{"text": conv.response_text}]})
+        
+        task = get_ai_response.delay(
+            user_prompt, 
+            core_prompt, 
+            history_dicts, 
+            str(session_id), 
+            request.user.id
+        )
+        
+        # --- MODIFIED LINE ---
+        # Return both the task_id for polling and the session_id for the frontend to track.
+        return JsonResponse({'task_id': task.id, 'session_id': session_id})
 
     return JsonResponse({'error': 'Invalid request method.'}, status=405)
 
-# --- ADD THIS MISSING FUNCTION ---
+@login_required
+def get_task_status(request, task_id):
+    task_result = AsyncResult(task_id)
+    result = {
+        "task_id": task_id,
+        "status": task_result.status,
+        "result": task_result.result if task_result.status == 'SUCCESS' else None,
+    }
+    return JsonResponse(result)
+
 @login_required
 def get_chat_sessions(request):
     sessions = ChatSession.objects.filter(user=request.user).order_by('-created_at')
@@ -372,8 +397,8 @@ def get_chat_sessions(request):
         for session in sessions
     ]
     return JsonResponse({'sessions': session_list})
-# ---------------------------------
 
+# ... (register and verify_email functions remain unchanged) ...
 def register(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
@@ -662,6 +687,33 @@ class Migration(migrations.Migration):
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='player_profiles', to=settings.AUTH_USER_MODEL)),
                 ('sport', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='recruiting.sport')),
             ],
+        ),
+    ]
+
+```
+
+--- 
+
+### File: `.\recruiting\migrations\0008_conversation_recruiting__session_35ea8c_idx.py`
+
+```
+# Generated by Django 5.2.5 on 2025-10-02 17:18
+
+from django.conf import settings
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('recruiting', '0007_sport_playerprofile'),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+    ]
+
+    operations = [
+        migrations.AddIndex(
+            model_name='conversation',
+            index=models.Index(fields=['session', 'timestamp'], name='recruiting__session_35ea8c_idx'),
         ),
     ]
 

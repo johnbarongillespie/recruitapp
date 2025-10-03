@@ -1,4 +1,61 @@
 services:
+  # Define the Database as part of the Blueprint
+  - name: recruitapp-blueprint-db
+    type: psql
+    region: ohio
+    plan: free
+
+  # The Redis instance for Celery
+  - name: recruitapp-redis
+    type: redis
+    region: ohio
+    plan: free
+    ipAllowList: []
+
+  # The Django Web Server (Gunicorn)
+  - name: recruitapp-web
+    runtime: python
+    region: ohio
+    type: web
+    plan: starter
+    buildCommand: |
+      pip install -r requirements.txt
+      python manage.py collectstatic --no-input
+    startCommand: "python manage.py migrate && gunicorn recruitapp_core.wsgi"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: recruitapp-blueprint-db
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: recruitapp-redis
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: "3.13.7"
+
+  # The Celery Background Worker
+  - name: recruitapp-worker
+    runtime: python
+    region: ohio
+    type: worker
+    plan: starter # You may need to upgrade this plan if memory issues persist
+    buildCommand: "pip install -r requirements.txt"
+    # --- FIX: Added concurrency limit to prevent memory crashes ---
+    startCommand: "celery -A recruitapp_core worker --loglevel=info --concurrency=3"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: recruitapp-blueprint-db
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: recruitapp-redis
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: "3.13.7"
   # --- FIX: Renamed DB and used correct 'psql' type ---
   - name: recruitapp-blueprint-db
     type: psql
