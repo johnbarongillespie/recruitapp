@@ -1,24 +1,28 @@
 services:
+  # --- NEW: Define the Database as part of the Blueprint ---
+  - name: recruitapp-db
+    type: psql
+    plan: free # Can be upgraded later
+
+  # 1. The Redis instance for Celery
   - name: recruitapp-redis
     type: redis
     plan: free
     ipAllowList: []
 
+  # 2. The Django Web Server (Gunicorn)
   - name: recruitapp-web
     runtime: python
     type: web
     plan: starter
-    # --- FIX: Set a build flag and run collectstatic ---
     buildCommand: |
       pip install -r requirements.txt
-      export IS_BUILD_PROCESS=true
       python manage.py collectstatic --no-input
-    # --- FIX: Only run migrate and gunicorn at start ---
     startCommand: "python manage.py migrate && gunicorn recruitapp_core.wsgi"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: recruitapp-db
+          name: recruitapp-db # This now refers to the DB defined above
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
@@ -27,7 +31,12 @@ services:
           property: connectionString
       - key: PYTHON_VERSION
         value: "3.13.7"
+      # --- IMPORTANT: Disable the build-time flag for now ---
+      # We no longer need the IS_BUILD_PROCESS flag with this setup
+      # - key: IS_BUILD_PROCESS 
+      #   value: true 
 
+  # 3. The Celery Background Worker
   - name: recruitapp-worker
     runtime: python
     type: worker
@@ -37,7 +46,7 @@ services:
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: recruitapp-db
+          name: recruitapp-db # This also refers to the DB defined above
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
