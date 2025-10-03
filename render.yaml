@@ -1,4 +1,5 @@
 services:
+# Forcing an update - Oct 3, 2025
   # --- NEW: Define the Database as part of the Blueprint ---
   - name: recruitapp-db
     type: psql
