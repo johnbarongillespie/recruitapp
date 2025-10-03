@@ -10,10 +10,10 @@ services:
     runtime: python
     type: web
     plan: starter
-    # --- FIX: Removed 'migrate' from the build command ---
+    # --- FIX: The build command ONLY installs packages ---
     buildCommand: "pip install -r requirements.txt"
-    # --- FIX: Added 'migrate' to the start command ---
-    startCommand: "python manage.py migrate && gunicorn recruitapp_core.wsgi"
+    # --- FIX: All Django commands are moved to the start command ---
+    startCommand: "python manage.py collectstatic --no-input && python manage.py migrate && gunicorn recruitapp_core.wsgi"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
