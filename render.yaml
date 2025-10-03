@@ -1,10 +1,8 @@
-# A top-level key for defining PostgreSQL databases
 databases:
-  - name: recruitapp-db # A unique name for the new database
+  - name: recruitapp-db
     plan: free
     region: ohio
 
-# A separate top-level key for all other services
 services:
   # Redis is a "service", not a "database"
   - name: recruitapp-redis
@@ -26,10 +24,12 @@ services:
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: recruitapp-db # This now correctly refers to the DB in the 'databases' block
+          name: recruitapp-db
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
+          # --- FIX: Added the required service type ---
+          type: redis
           name: recruitapp-redis
           property: connectionString
       - key: PYTHON_VERSION
@@ -50,6 +50,8 @@ services:
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
+          # --- FIX: Added the required service type ---
+          type: redis
           name: recruitapp-redis
           property: connectionString
       - key: PYTHON_VERSION
