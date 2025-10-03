@@ -1,7 +1,6 @@
 databases:
   - name: recruitapp-db
     plan: Basic-1gb
-    type: postgresql
     region: ohio
 
 services:
