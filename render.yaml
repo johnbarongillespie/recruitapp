@@ -1,6 +1,6 @@
 databases:
   - name: recruitapp-db
-    plan: starter
+    plan: Basic-1gb
     region: oregon
 
 services:
