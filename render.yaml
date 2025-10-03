@@ -1,8 +1,8 @@
 services:
-# Forcing an update - Oct 3, 2025
   # --- NEW: Define the Database as part of the Blueprint ---
   - name: recruitapp-db
-    type: psql
+    # --- FIX: Changed 'psql' to 'postgres' ---
+    type: postgres
     plan: free # Can be upgraded later
 
   # 1. The Redis instance for Celery
@@ -32,10 +32,6 @@ services:
           property: connectionString
       - key: PYTHON_VERSION
         value: "3.13.7"
-      # --- IMPORTANT: Disable the build-time flag for now ---
-      # We no longer need the IS_BUILD_PROCESS flag with this setup
-      # - key: IS_BUILD_PROCESS 
-      #   value: true 
 
   # 3. The Celery Background Worker
   - name: recruitapp-worker
