@@ -1,19 +1,20 @@
 services:
-  # 1. The Redis instance for Celery
   - name: recruitapp-redis
     type: redis
     plan: free
     ipAllowList: []
 
-  # 2. The Django Web Server (Gunicorn)
   - name: recruitapp-web
     runtime: python
     type: web
     plan: starter
-    # --- FIX: The build command ONLY installs packages ---
-    buildCommand: "pip install -r requirements.txt"
-    # --- FIX: All Django commands are moved to the start command ---
-    startCommand: "python manage.py collectstatic --no-input && python manage.py migrate && gunicorn recruitapp_core.wsgi"
+    # --- FIX: Set a build flag and run collectstatic ---
+    buildCommand: |
+      pip install -r requirements.txt
+      export IS_BUILD_PROCESS=true
+      python manage.py collectstatic --no-input
+    # --- FIX: Only run migrate and gunicorn at start ---
+    startCommand: "python manage.py migrate && gunicorn recruitapp_core.wsgi"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -27,7 +28,6 @@ services:
       - key: PYTHON_VERSION
         value: "3.13.7"
 
-  # 3. The Celery Background Worker
   - name: recruitapp-worker
     runtime: python
     type: worker
