@@ -311,7 +311,8 @@ from dotenv import load_dotenv
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
 import json
-from .models import PromptComponent, Conversation, UserProfile, ChatSession, PlayerProfile
+# PlayerProfile is already imported, perfect!
+from .models import PromptComponent, Conversation, UserProfile, ChatSession, PlayerProfile 
 from .forms import CustomUserCreationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -354,9 +355,33 @@ def ask_agent(request):
         except ChatSession.DoesNotExist:
             return JsonResponse({'error': 'Invalid session ID'}, status=404)
 
+        # --- MODIFICATION START: Context-Aware Coaching ---
+        # Let's give Coach Alex some background on who they're talking to!
+        player_context = ""
+        try:
+            profile = PlayerProfile.objects.select_related('sport').get(user=request.user)
+            # We construct a neat little sentence for the AI to understand.
+            player_context = (
+                f"CONTEXT: You are speaking to an athlete. "
+                f"Their profile is: Sport - {profile.sport.name}, "
+                f"Position - {profile.position}, "
+                f"Graduation Year - {profile.graduation_year}. "
+                f"Use this information to personalize your advice."
+            )
+        except PlayerProfile.DoesNotExist:
+            # If there's no profile, no problem. We just proceed without context.
+            logger.info(f"No PlayerProfile found for user '{request.user.username}'.")
+            pass
+        # --- MODIFICATION END ---
+
         try:
             prompt_name = os.getenv('PROMPT_COMPONENT_NAME', 'recruiter_core_prompt')
-            core_prompt = PromptComponent.objects.get(name=prompt_name).content
+            core_prompt_base = PromptComponent.objects.get(name=prompt_name).content
+            
+            # --- MODIFICATION: Prepend player context to the core prompt ---
+            # Voilà! The agent is now instantly aware of the user's profile.
+            core_prompt = f"{player_context}\n\n{core_prompt_base}" if player_context else core_prompt_base
+
         except PromptComponent.DoesNotExist:
             logger.warning(f"PromptComponent '{prompt_name}' not found. Using fallback.")
             core_prompt = "You are a helpful AI assistant."
@@ -375,8 +400,6 @@ def ask_agent(request):
             request.user.id
         )
         
-        # --- MODIFIED LINE ---
-        # Return both the task_id for polling and the session_id for the frontend to track.
         return JsonResponse({'task_id': task.id, 'session_id': session_id})
 
     return JsonResponse({'error': 'Invalid request method.'}, status=405)
@@ -409,6 +432,7 @@ def register(request):
             user.is_active = False
             user.save()
             UserProfile.objects.create(user=user)
+            # ... rest of the function is unchanged
             token = default_token_generator.make_token(user)
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             verification_link = request.build_absolute_uri(
