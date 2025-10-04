@@ -10,6 +10,12 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# --- ADD THIS FOR DEBUGGING ---
+print("--- DEBUG: DATABASE_URL FROM .ENV ---")
+print(os.environ.get('DATABASE_URL'))
+print("-------------------------------------")
+# ------------------------------
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 

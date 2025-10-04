@@ -5,23 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RecruitTalk Agent</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,700;1,300&family=Open+Sans&display=swap" rel="stylesheet">
+
     <style>
         :root {
-            --border-color: #444; /* Darker border for dark theme */
-            --user-bg: #007bff;
-            --agent-bg: #4a4a4a; /* Darker agent bubble */
-            --text-color-light: #ececf1;
-            --sidebar-bg: #202123;
-            --sidebar-text: #ececf1;
-            --sidebar-hover-bg: #343541;
-            --chat-bg: #343541; /* Main chat background */
-            --logout-btn-bg: #6c757d;
+            --primary-bg: #121A2A;      /* Deep Navy */
+            --secondary-bg: #243047;    /* Dark Slate */
+            --accent-color: #FFA500;    /* Bright Orange */
+            --text-color: #E0E0E0;      /* Light Gray */
+            --border-color: #3a4a6b;
+            --sidebar-bg: #0b101b;
+            --font-heading: 'Montserrat', sans-serif;
+            --font-body-agent: 'Open Sans', sans-serif;
+            --font-body-user: 'Montserrat', sans-serif;
         }
         html, body {
             height: 100%;
             margin: 0;
-            font-family: sans-serif;
-            background-color: #f9f9f9;
+            font-family: var(--font-body-agent);
+            background-color: var(--sidebar-bg);
+            color: var(--text-color);
+            overflow: hidden;
         }
         .app-wrapper {
             display: grid;
@@ -31,36 +38,38 @@
         }
         #sidebar {
             background-color: var(--sidebar-bg);
-            color: var(--sidebar-text);
             padding: 10px;
             display: flex;
             flex-direction: column;
             gap: 10px;
+            border-right: 1px solid var(--border-color);
         }
         #sidebar h2 {
+            font-family: var(--font-heading);
             font-size: 14px;
             margin: 10px 5px;
             color: #8e8ea0;
+            text-transform: uppercase;
         }
         .session-link {
             display: block;
             padding: 10px;
             border-radius: 5px;
             text-decoration: none;
-            color: var(--sidebar-text);
+            color: var(--text-color);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             cursor: pointer;
         }
         .session-link:hover {
-            background-color: #4a4a4a;
+            background-color: var(--secondary-bg);
         }
         .chat-container {
             display: flex;
             flex-direction: column;
             height: 100vh;
-            background-color: var(--chat-bg); /* Dark chat container */
+            background-color: var(--primary-bg);
         }
         .chat-header {
             flex-shrink: 0;
@@ -69,27 +78,36 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            color: var(--text-color-light); /* Light text for header */
         }
-        .header-left { display: flex; align-items: center; gap: 15px; }
-        .header-left h1 { font-size: 20px; margin: 0; }
+        .header-left h1 {
+            font-family: var(--font-heading);
+            font-size: 20px;
+            margin: 0;
+        }
         .header-left button {
-            padding: 8px 12px;
-            border: 1px solid var(--border-color);
-            background-color: #555;
-            color: var(--text-color-light);
+            border: 1px solid var(--accent-color);
+            background-color: transparent;
+            color: var(--accent-color);
             border-radius: 5px;
             cursor: pointer;
+            margin-left: 15px;
+            font-weight: bold;
         }
         .header-right { display: flex; align-items: center; gap: 15px; }
-        .header-right span { font-size: 14px; color: #ccc; }
+        .header-right span { 
+            font-size: 14px;
+            color: #ccc;
+        }
         .logout-btn {
             padding: 8px 16px;
-            background-color: var(--logout-btn-bg);
-            color: white;
+            background-color: var(--secondary-bg);
+            color: var(--text-color);
             text-decoration: none;
             border-radius: 5px;
             font-size: 14px;
+        }
+        .logout-btn:hover {
+            background-color: #3e5075;
         }
         .message-list {
             flex-grow: 1;
@@ -100,33 +118,34 @@
         }
         .message {
             margin-bottom: 15px;
-            padding: 10px 15px;
+            padding: 12px 18px;
             border-radius: 18px;
             max-width: 80%;
-            line-height: 1.5;
+            line-height: 1.6;
             word-wrap: break-word;
         }
         .user-message {
-            background-color: var(--user-bg);
-            color: white;
+            background-color: var(--accent-color);
+            color: #111;
             align-self: flex-end;
             margin-left: auto;
+            font-family: var(--font-body-user);
+            font-weight: 300;
+            font-style: italic;
         }
         .agent-message {
-            background-color: var(--agent-bg);
-            color: var(--text-color-light);
+            background-color: var(--secondary-bg);
+            color: var(--text-color);
             align-self: flex-start;
             margin-right: auto;
         }
-        .agent-message ul, .agent-message ol { padding-left: 20px; }
-        .agent-message li { margin-bottom: 5px; }
         .prompt-form-wrapper {
             padding: 20px;
             border-top: 1px solid var(--border-color);
-            background-color: var(--chat-bg);
+            background-color: var(--primary-bg);
         }
         .prompt-form {
-            background-color: #4a4a4a;
+            background-color: var(--secondary-bg);
             border-radius: 8px;
             padding: 5px 20px;
             display: flex;
@@ -138,34 +157,73 @@
             padding: 10px;
             border: none;
             background-color: transparent;
-            color: var(--text-color-light);
+            color: var(--text-color);
+            font-family: var(--font-body-agent);
             font-size: 16px;
             resize: none;
             box-sizing: border-box;
             flex-grow: 1;
         }
-        textarea:focus {
-            outline: none;
-        }
+        textarea:focus { outline: none; }
         .prompt-form button {
             padding: 10px 20px;
             border: none;
-            background-color: var(--user-bg);
-            color: white;
+            background-color: var(--accent-color);
+            color: #111;
             border-radius: 5px;
             cursor: pointer;
             font-size: 16px;
             font-weight: bold;
+            font-family: var(--font-heading);
+        }
+
+        .thinking-indicator {
+            width: 60px;
+            height: 60px;
+            align-self: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .thinking-indicator .sk-cube {
+            width: 33.33%;
+            height: 33.33%;
+            background-color: #E08E00; /* Darker orange color */
+            float: left;
+            animation: sk-cubeGridScaleDelay 1.3s infinite ease-in-out; 
+        }
+
+        .thinking-indicator .sk-cube1 { animation-delay: 0.2s; }
+        .thinking-indicator .sk-cube2 { animation-delay: 0.3s; }
+        .thinking-indicator .sk-cube3 { animation-delay: 0.4s; }
+        .thinking-indicator .sk-cube4 { animation-delay: 0.1s; }
+        .thinking-indicator .sk-cube5 { animation-delay: 0.2s; }
+        .thinking-indicator .sk-cube6 { animation-delay: 0.3s; }
+        .thinking-indicator .sk-cube7 { animation-delay: 0s; }
+        .thinking-indicator .sk-cube8 { animation-delay: 0.1s; }
+        .thinking-indicator .sk-cube9 { animation-delay: 0.2s; }
+
+        @keyframes sk-cubeGridScaleDelay {
+            0%, 70%, 100% {
+                transform: scale3D(1, 1, 1);
+            } 35% {
+                transform: scale3D(0, 0, 1);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .app-wrapper { grid-template-columns: 1fr; }
+            #sidebar { display: none; }
+            .chat-header { flex-direction: column; gap: 10px; padding: 15px; }
+            .message { max-width: 90%; }
         }
     </style>
 </head>
 <body>
     <div class="app-wrapper">
-        <div id="sidebar">
+         <div id="sidebar">
             <h2>Chat History</h2>
             <div id="session-list"></div>
         </div>
-
         <div class="chat-container">
             <div class="chat-header">
                 <div class="header-left">
@@ -193,119 +251,139 @@
     </div>
 
     <script>
-        const form = document.getElementById('prompt-form');
-        const messageList = document.getElementById('message-list');
-        const textarea = form.querySelector('textarea');
-        const newChatBtn = document.getElementById('new-chat-btn');
-        const csrfToken = document.querySelector('input[name=csrfmiddlewaretoken]').value;
-        const sessionListDiv = document.getElementById('session-list');
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('prompt-form');
+            const messageList = document.getElementById('message-list');
+            const textarea = form.querySelector('textarea');
+            const newChatBtn = document.getElementById('new-chat-btn');
+            const csrfToken = document.querySelector('input[name=csrfmiddlewaretoken]');
+            const sessionListDiv = document.getElementById('session-list');
 
-        let currentSessionId = null;
+            let currentSessionId = null;
 
-        // --- NEW: Function to poll for the task result ---
-        function pollTaskStatus(taskId) {
-            const interval = setInterval(async () => {
+            function pollTaskStatus(taskId) {
+                const interval = setInterval(async () => {
+                    try {
+                        const response = await fetch(`/agent/task_status/${taskId}/`);
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        const data = await response.json();
+
+                        if (data.status === 'SUCCESS') {
+                            clearInterval(interval);
+                            const thinkingBubble = document.getElementById('thinking-bubble');
+                            if (thinkingBubble) messageList.removeChild(thinkingBubble);
+                            addMessage(data.result, 'agent-message', true);
+                        } else if (data.status === 'FAILURE') {
+                            clearInterval(interval);
+                            const thinkingBubble = document.getElementById('thinking-bubble');
+                            if (thinkingBubble) messageList.removeChild(thinkingBubble);
+                            addMessage('Sorry, an error occurred.', 'agent-message', false);
+                        }
+                    } catch (error) {
+                        console.error('Polling error:', error);
+                        clearInterval(interval);
+                    }
+                }, 3000);
+            }
+
+            async function handleFormSubmit(event) {
+                event.preventDefault();
+                const prompt = textarea.value.trim();
+                if (prompt === '') return;
+
+                addMessage(prompt, 'user-message', false);
+                textarea.value = '';
+                
+                const thinkingBubble = document.createElement('div');
+                thinkingBubble.className = 'thinking-indicator';
+                thinkingBubble.id = 'thinking-bubble';
+                thinkingBubble.innerHTML = `
+                    <div class="sk-cube sk-cube1"></div> <div class="sk-cube sk-cube2"></div> <div class="sk-cube sk-cube3"></div>
+                    <div class="sk-cube sk-cube4"></div> <div class="sk-cube sk-cube5"></div> <div class="sk-cube sk-cube6"></div>
+                    <div class="sk-cube sk-cube7"></div> <div class="sk-cube sk-cube8"></div> <div class="sk-cube sk-cube9"></div>
+                `;
+                messageList.appendChild(thinkingBubble);
+                messageList.scrollTop = messageList.scrollHeight;
+
                 try {
-                    const response = await fetch(`/agent/task_status/${taskId}/`);
+                    const response = await fetch('/agent/ask/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken.value },
+                        body: JSON.stringify({ prompt: prompt, session_id: currentSessionId })
+                    });
+                    
                     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                     const data = await response.json();
-
-                    if (data.status === 'SUCCESS') {
-                        clearInterval(interval);
-                        const thinkingBubble = document.getElementById('thinking-bubble');
-                        if (thinkingBubble) messageList.removeChild(thinkingBubble);
-                        addMessage(data.result, 'agent-message', true);
-                    } else if (data.status === 'FAILURE') {
-                        clearInterval(interval);
-                        const thinkingBubble = document.getElementById('thinking-bubble');
-                        if (thinkingBubble) messageList.removeChild(thinkingBubble);
-                        addMessage('Sorry, an error occurred while processing your request.', 'agent-message', false);
+                    
+                    if (data.task_id) {
+                        if (data.session_id) {
+                            currentSessionId = data.session_id;
+                            if (!document.querySelector(`a[data-session-id="${data.session_id}"]`)) {
+                                loadChatHistory();
+                            }
+                        }
+                        pollTaskStatus(data.task_id);
+                    } else {
+                        throw new Error('Did not receive a task ID from the server.');
                     }
-                    // If status is 'PENDING', do nothing and wait for the next poll
                 } catch (error) {
-                    console.error('Polling error:', error);
-                    clearInterval(interval);
-                    const thinkingBubble = document.getElementById('thinking-bubble');
-                    if (thinkingBubble) messageList.removeChild(thinkingBubble);
-                    addMessage('Error fetching response. Please check the console.', 'agent-message', false);
+                    const bubble = document.getElementById('thinking-bubble');
+                    if (bubble) messageList.removeChild(bubble);
+                    addMessage('Sorry, an error occurred.', 'agent-message', false);
+                    console.error('Submit error:', error);
                 }
-            }, 3000); // Check every 3 seconds
-        }
-
-        async function handleFormSubmit(event) {
-            event.preventDefault();
-            const prompt = textarea.value.trim();
-            if (prompt === '') return;
-
-            addMessage(prompt, 'user-message', false);
-            textarea.value = '';
+            }
             
-            const thinkingBubble = addMessage('Thinking...', 'agent-message', false);
-            thinkingBubble.id = 'thinking-bubble';
-
-            try {
-                const response = await fetch('/agent/ask/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-                    body: JSON.stringify({ prompt: prompt, session_id: currentSessionId })
-                });
-                
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-                
-                if (data.task_id) {
-                    // If this was a new chat, the backend created a session. Let's save its ID.
-                    if (data.session_id) {
-                        currentSessionId = data.session_id;
-                        loadChatHistory(); // Refresh the sidebar
-                    }
-                    pollTaskStatus(data.task_id);
-                } else {
-                    throw new Error('Did not receive a task ID from the server.');
+            async function loadChatHistory() {
+                try {
+                    const response = await fetch('/sessions/');
+                    if (!response.ok) throw new Error('Failed to load sessions');
+                    const data = await response.json();
+                    sessionListDiv.innerHTML = '';
+                    data.sessions.forEach(session => {
+                        const link = document.createElement('a');
+                        link.className = 'session-link';
+                        link.textContent = session.title;
+                        link.dataset.sessionId = session.id;
+                        sessionListDiv.appendChild(link);
+                    });
+                } catch (error) {
+                    console.error("Could not load chat history:", error);
                 }
-            } catch (error) {
-                messageList.removeChild(thinkingBubble);
-                addMessage('Sorry, there was an error submitting your request.', 'agent-message', false);
-                console.error('Submit error:', error);
             }
-        }
-        
-        async function loadChatHistory() {
-            // ... (rest of the file is the same)
-        }
-        // ... (rest of the file is the same)
 
-        newChatBtn.addEventListener('click', () => {
-            currentSessionId = null;
-            messageList.innerHTML = '';
-            addMessage("I'm your personal AI Recruiting Strategist. Ask me anything about the recruiting process!", 'agent-message', true);
+            newChatBtn.addEventListener('click', () => {
+                currentSessionId = null;
+                messageList.innerHTML = '';
+                addMessage("I'm your personal AI Recruiting Strategist. Ask me anything about the recruiting process!", 'agent-message', true);
+            });
+            
+            textarea.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    form.dispatchEvent(new Event('submit', {cancelable: true}));
+                }
+            });
+
+            form.addEventListener('submit', handleFormSubmit);
+
+            function addMessage(text, className, isMarkdown) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message ' + className;
+                if (isMarkdown) {
+                    messageDiv.innerHTML = marked.parse(text || "");
+                } else {
+                    const p = document.createElement('p');
+                    p.textContent = text;
+                    messageDiv.appendChild(p);
+                }
+                messageList.appendChild(messageDiv);
+                messageList.scrollTop = messageList.scrollHeight;
+                return messageDiv;
+            }
+
+            loadChatHistory();
         });
-        
-        textarea.addEventListener('keydown', function(event) {
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                form.dispatchEvent(new Event('submit', {cancelable: true}));
-            }
-        });
-
-        form.addEventListener('submit', handleFormSubmit);
-
-        function addMessage(text, className, isMarkdown) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message ' + className;
-            if (isMarkdown) {
-                messageDiv.innerHTML = marked.parse(text || ""); // Ensure text is not null
-            } else {
-                const p = document.createElement('p');
-                p.textContent = text;
-                messageDiv.appendChild(p);
-            }
-            messageList.appendChild(messageDiv);
-            messageList.scrollTop = messageList.scrollHeight;
-            return messageDiv;
-        }
-
-        document.addEventListener('DOMContentLoaded', loadChatHistory);
     </script>
 </body>
 </html>
