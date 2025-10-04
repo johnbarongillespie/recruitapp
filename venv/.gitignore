@@ -2,21 +2,3 @@ Set-Content -Path .gitignore -Value @"
 # Environment Variables & Secrets
 # This is the most important line for security.
 .env
-
-# Virtual Environment
-# Prevents uploading thousands of package files.
-venv/
-
-# Local Database
-# Your local test database should not be in the repository.
-db.sqlite3
-
-# Log files
-# Logs can sometimes contain sensitive information.
-*.log
-debug.log
-
-# Python Cache
-__pycache__/
-*.pyc
-"@
