@@ -5,8 +5,7 @@ from dotenv import load_dotenv
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
 import json
-# PlayerProfile is already imported, perfect!
-from .models import PromptComponent, Conversation, UserProfile, ChatSession, PlayerProfile 
+from .models import PromptComponent, Conversation, UserProfile, ChatSession, SportProfile, Sport 
 from .forms import CustomUserCreationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -17,7 +16,7 @@ from django.core.mail import send_mail
 from django.urls import reverse
 import logging
 from celery.result import AsyncResult
-from .tasks import get_ai_response
+from .tasks import get_ai_response, generate_title_and_summary
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +28,15 @@ def landing_page(request):
     return render(request, 'recruiting/landing_page.html')
 
 @login_required
-def index(request):
-    logger.info(f"User '{request.user.username}' loaded the agent page.")
+def index(request, session_id=None):
+    if session_id is None:
+        latest_session = ChatSession.objects.filter(user=request.user).order_by('-updated_at').first()
+        if latest_session:
+            return redirect('view_session', session_id=latest_session.id)
+    
+    logger.info(f"User '{request.user.username}' loaded the agent page for session '{session_id}'.")
     return render(request, 'recruiting/index.html')
+
 
 @login_required
 def ask_agent(request):
@@ -44,38 +49,35 @@ def ask_agent(request):
             if session_id:
                 chat_session = ChatSession.objects.get(id=session_id, user=request.user)
             else:
+                CHAT_LIMIT = 3
+                current_session_count = ChatSession.objects.filter(user=request.user).count()
+                if current_session_count >= CHAT_LIMIT:
+                    return JsonResponse({'error': 'Chat limit reached.'}, status=403)
+
                 chat_session = ChatSession.objects.create(user=request.user, title=user_prompt[:100])
                 session_id = chat_session.id
         except ChatSession.DoesNotExist:
             return JsonResponse({'error': 'Invalid session ID'}, status=404)
 
-        # --- MODIFICATION START: Context-Aware Coaching ---
-        # Let's give Coach Alex some background on who they're talking to!
         player_context = ""
         try:
-            profile = PlayerProfile.objects.select_related('sport').get(user=request.user)
-            # We construct a neat little sentence for the AI to understand.
-            player_context = (
-                f"CONTEXT: You are speaking to an athlete. "
-                f"Their profile is: Sport - {profile.sport.name}, "
-                f"Position - {profile.position}, "
-                f"Graduation Year - {profile.graduation_year}. "
-                f"Use this information to personalize your advice."
-            )
-        except PlayerProfile.DoesNotExist:
-            # If there's no profile, no problem. We just proceed without context.
-            logger.info(f"No PlayerProfile found for user '{request.user.username}'.")
+            profile = SportProfile.objects.select_related('sport').filter(user=request.user).first()
+            if profile:
+                player_context = (
+                    f"CONTEXT: You are speaking to an athlete. "
+                    f"Their profile is: Sport - {profile.sport.name}, "
+                    f"Position - {profile.position}, "
+                    f"Graduation Year - {profile.graduation_year}. "
+                    f"Use this information to personalize your advice."
+                )
+        except SportProfile.DoesNotExist:
+            logger.info(f"No SportProfile found for user '{request.user.username}'.")
             pass
-        # --- MODIFICATION END ---
 
         try:
             prompt_name = os.getenv('PROMPT_COMPONENT_NAME', 'recruiter_core_prompt')
             core_prompt_base = PromptComponent.objects.get(name=prompt_name).content
-            
-            # --- MODIFICATION: Prepend player context to the core prompt ---
-            # Voilà! The agent is now instantly aware of the user's profile.
             core_prompt = f"{player_context}\n\n{core_prompt_base}" if player_context else core_prompt_base
-
         except PromptComponent.DoesNotExist:
             logger.warning(f"PromptComponent '{prompt_name}' not found. Using fallback.")
             core_prompt = "You are a helpful AI assistant."
@@ -106,19 +108,63 @@ def get_task_status(request, task_id):
         "status": task_result.status,
         "result": task_result.result if task_result.status == 'SUCCESS' else None,
     }
+
+    if result['status'] == 'SUCCESS':
+        try:
+            conv = Conversation.objects.filter(response_text=result['result']).latest('timestamp')
+            session = conv.session
+            # --- CORRECTED TRIGGER LOGIC ---
+            # Trigger if it's the first message OR if the summary is currently empty.
+            if session and (session.messages.count() == 1 or not session.summary):
+                generate_title_and_summary.delay(str(session.id))
+        except (Conversation.DoesNotExist, AttributeError):
+            pass 
+    
     return JsonResponse(result)
 
 @login_required
 def get_chat_sessions(request):
-    sessions = ChatSession.objects.filter(user=request.user).order_by('-created_at')
+    sessions = ChatSession.objects.filter(user=request.user).order_by('-updated_at')
     session_list = [
-        {'id': str(session.id), 'title': session.title} 
+        {'id': str(session.id), 'title': session.title, 'summary': session.summary} 
         for session in sessions
     ]
     return JsonResponse({'sessions': session_list})
 
-# ... (register and verify_email functions remain unchanged) ...
+@login_required
+def get_session_history(request, session_id):
+    try:
+        session = ChatSession.objects.get(id=session_id, user=request.user)
+        messages = session.messages.order_by('timestamp').values(
+            'prompt_text', 'response_text', 'timestamp'
+        )
+        history = []
+        for msg in messages:
+            history.append({'type': 'user', 'text': msg['prompt_text'], 'timestamp': msg['timestamp']})
+            history.append({'type': 'model', 'text': msg['response_text'], 'timestamp': msg['timestamp']})
+        return JsonResponse({'history': history})
+    except ChatSession.DoesNotExist:
+        return JsonResponse({'error': 'Session not found or access denied.'}, status=404)
+    except Exception as e:
+        logger.error(f"Error fetching session history for session {session_id}: {e}")
+        return JsonResponse({'error': 'An internal error occurred.'}, status=500)
+
+@login_required
+def delete_session(request, session_id):
+    if request.method == 'POST':
+        try:
+            session = ChatSession.objects.get(id=session_id, user=request.user)
+            session.delete()
+            return JsonResponse({'status': 'success', 'message': 'Session deleted.'})
+        except ChatSession.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Session not found or access denied.'}, status=404)
+        except Exception as e:
+            logger.error(f"Error deleting session {session_id}: {e}")
+            return JsonResponse({'status': 'error', 'message': 'An internal error occurred.'}, status=500)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
+
 def register(request):
+    # ... (code unchanged)
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
@@ -126,7 +172,6 @@ def register(request):
             user.is_active = False
             user.save()
             UserProfile.objects.create(user=user)
-            # ... rest of the function is unchanged
             token = default_token_generator.make_token(user)
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             verification_link = request.build_absolute_uri(
@@ -141,6 +186,7 @@ def register(request):
     return render(request, 'registration/register.html', {'form': form})
 
 def verify_email(request, uidb64, token):
+    # ... (code unchanged)
     try:
         uid = force_str(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)

@@ -26,6 +26,8 @@
             0007_sport_playerprofile.py
             0008_conversation_recruiting__session_35ea8c_idx.py
             0009_seed_prompt_components.py
+            0010_chatsession_updated_at_userprofile_city_and_more.py
+            0011_chatsession_summary.py
             __init__.py
     static/
         recruiting/
@@ -79,13 +81,15 @@ Error reading file: 'utf-8' codec can't decode byte 0xff in position 0: invalid 
 
 ```
 from django.contrib import admin
-from .models import PromptComponent, Conversation, ChatSession, Sport, PlayerProfile
+# Corrected the import here from PlayerProfile to SportProfile
+from .models import PromptComponent, Conversation, ChatSession, Sport, SportProfile, UserProfile
 
 admin.site.register(PromptComponent)
 admin.site.register(Conversation)
 admin.site.register(ChatSession)
 admin.site.register(Sport)
-admin.site.register(PlayerProfile)
+admin.site.register(SportProfile) # Register the newly named model
+admin.site.register(UserProfile) # Also register UserProfile
 ```
 
 --- 
@@ -126,7 +130,12 @@ from django.contrib.auth.models import User
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
+    high_school = models.CharField(max_length=200, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    state = models.CharField(max_length=50, blank=True)
+    zip_code = models.CharField(max_length=10, blank=True)
     email_verified = models.BooleanField(default=False)
+    onboarding_complete = models.BooleanField(default=False)
 
     def __str__(self):
         return self.user.username
@@ -146,11 +155,16 @@ class Sport(models.Model):
     def __str__(self):
         return self.name
 
-class PlayerProfile(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='player_profiles')
+class SportProfile(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sport_profiles')
     sport = models.ForeignKey(Sport, on_delete=models.CASCADE)
     position = models.CharField(max_length=100, blank=True)
     graduation_year = models.IntegerField(null=True, blank=True)
+    height = models.CharField(max_length=10, blank=True)
+    weight = models.IntegerField(null=True, blank=True)
+    gpa = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
+    highlight_reel_url = models.URLField(max_length=250, blank=True)
+    metrics = models.JSONField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.username} - {self.sport.name} ({self.position or 'N/A'})"
@@ -159,10 +173,12 @@ class ChatSession(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chat_sessions')
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     title = models.CharField(max_length=200, default='New Chat')
+    summary = models.CharField(max_length=255, blank=True)
 
     def __str__(self):
-        return f"{self.user.username}'s Chat on {self.created_at.strftime('%Y-%m-%d')}"
+        return f"'{self.title}' for {self.user.username} (Updated: {self.updated_at.strftime('%Y-%m-%d %H:%M')})"
 
 class Conversation(models.Model):
     session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name='messages', null=True)
@@ -177,7 +193,6 @@ class Conversation(models.Model):
             return f"Message from {user_name} in session {self.session.id} at {self.timestamp.strftime('%H:%M')}"
         return f"Message from {user_name} at {self.timestamp.strftime('%H:%M')}"
 
-    # --- ADD THIS META CLASS FOR THE INDEX ---
     class Meta:
         indexes = [
             models.Index(fields=['session', 'timestamp']),
@@ -190,6 +205,7 @@ class Conversation(models.Model):
 
 ```
 import os
+import json
 import vertexai
 from celery import shared_task
 from vertexai.generative_models import GenerativeModel, Content, Part
@@ -209,9 +225,8 @@ def get_ai_response(user_prompt, core_prompt, history_dicts, session_id, user_id
     """
     try:
         # The model is now created inside the task, which is fast.
-        # This allows it to use the specific core_prompt for this request.
         model = GenerativeModel(
-            "gemini-2.5-pro",
+            "gemini-2.5-pro", # CORRECTED MODEL NAME
             system_instruction=[core_prompt]
         )
         
@@ -235,6 +250,61 @@ def get_ai_response(user_prompt, core_prompt, history_dicts, session_id, user_id
     except Exception as e:
         # Handle exceptions and return an error message
         return f"An error occurred: {str(e)}"
+
+@shared_task
+def generate_title_and_summary(session_id):
+    """
+    A background task to generate a title and summary for a chat session.
+    """
+    try:
+        session = ChatSession.objects.get(id=session_id)
+        # Get the first user prompt and the first agent response
+        first_messages = list(session.messages.order_by('timestamp')[:2])
+
+        if len(first_messages) < 1: # Only need the first prompt and response
+            return "Not enough context to generate summary."
+
+        conversation_context = (
+            f"USER: {first_messages[0].prompt_text}\n\n"
+            f"AGENT: {first_messages[0].response_text}"
+        )
+
+        system_prompt = (
+            "You are a summarization expert. Based on the following conversation, "
+            "generate a concise title and a one-sentence summary. "
+            "The title should be 5 words or less. "
+            "Respond ONLY with a valid JSON object with two keys: 'title' and 'summary'."
+        )
+        
+        model = GenerativeModel(
+            "gemini-2.5-pro", # CORRECTED MODEL NAME
+            system_instruction=[system_prompt]
+        )
+        
+        response = model.generate_content(conversation_context)
+        
+        # Clean the response and parse the JSON
+        cleaned_text = response.text.strip()
+        if cleaned_text.startswith('```json'):
+            cleaned_text = cleaned_text[7:-3].strip()
+        
+        response_json = json.loads(cleaned_text)
+        
+        new_title = response_json.get('title')
+        new_summary = response_json.get('summary')
+
+        if new_title and new_summary:
+            session.title = new_title
+            session.summary = new_summary
+            session.save(update_fields=['title', 'summary', 'updated_at'])
+            return f"Updated session {session_id} with title and summary."
+        else:
+            return f"Failed to extract title/summary from AI response for session {session_id}."
+
+    except Exception as e:
+        # Log the error but don't crash the worker
+        print(f"Error generating title/summary for session {session_id}: {e}")
+        return f"Failed to update session {session_id}."
 ```
 
 --- 
@@ -279,22 +349,17 @@ from django.urls import path, include
 from . import views
 
 urlpatterns = [
-    # The root path now serves our landing page
     path('', views.landing_page, name='landing_page'),
     
-    # The path for our main agent/chat interface
+    # MODIFIED: These two paths now handle the main agent view and resuming a specific chat
     path('agent/', views.index, name='index'),
+    path('agent/<uuid:session_id>/', views.index, name='view_session'),
 
-    # The path for our AI's API endpoint (starts the background task)
     path('agent/ask/', views.ask_agent, name='ask_agent'),
-
-    # The new path for checking the status of a background task
     path('agent/task_status/<str:task_id>/', views.get_task_status, name='get_task_status'),
-    
-    # The path for the session history API
     path('sessions/', views.get_chat_sessions, name='get_chat_sessions'),
-
-    # This single line includes all of allauth's URLs (login, logout, signup, etc.)
+    path('agent/session/<uuid:session_id>/delete/', views.delete_session, name='delete_session'),
+    path('agent/session/<uuid:session_id>/history/', views.get_session_history, name='get_session_history'),
     path('accounts/', include('allauth.urls')),
 ]
 ```
@@ -311,8 +376,7 @@ from dotenv import load_dotenv
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
 import json
-# PlayerProfile is already imported, perfect!
-from .models import PromptComponent, Conversation, UserProfile, ChatSession, PlayerProfile 
+from .models import PromptComponent, Conversation, UserProfile, ChatSession, SportProfile, Sport 
 from .forms import CustomUserCreationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -323,7 +387,7 @@ from django.core.mail import send_mail
 from django.urls import reverse
 import logging
 from celery.result import AsyncResult
-from .tasks import get_ai_response
+from .tasks import get_ai_response, generate_title_and_summary
 
 logger = logging.getLogger(__name__)
 
@@ -335,9 +399,15 @@ def landing_page(request):
     return render(request, 'recruiting/landing_page.html')
 
 @login_required
-def index(request):
-    logger.info(f"User '{request.user.username}' loaded the agent page.")
+def index(request, session_id=None):
+    if session_id is None:
+        latest_session = ChatSession.objects.filter(user=request.user).order_by('-updated_at').first()
+        if latest_session:
+            return redirect('view_session', session_id=latest_session.id)
+    
+    logger.info(f"User '{request.user.username}' loaded the agent page for session '{session_id}'.")
     return render(request, 'recruiting/index.html')
+
 
 @login_required
 def ask_agent(request):
@@ -350,38 +420,35 @@ def ask_agent(request):
             if session_id:
                 chat_session = ChatSession.objects.get(id=session_id, user=request.user)
             else:
+                CHAT_LIMIT = 3
+                current_session_count = ChatSession.objects.filter(user=request.user).count()
+                if current_session_count >= CHAT_LIMIT:
+                    return JsonResponse({'error': 'Chat limit reached.'}, status=403)
+
                 chat_session = ChatSession.objects.create(user=request.user, title=user_prompt[:100])
                 session_id = chat_session.id
         except ChatSession.DoesNotExist:
             return JsonResponse({'error': 'Invalid session ID'}, status=404)
 
-        # --- MODIFICATION START: Context-Aware Coaching ---
-        # Let's give Coach Alex some background on who they're talking to!
         player_context = ""
         try:
-            profile = PlayerProfile.objects.select_related('sport').get(user=request.user)
-            # We construct a neat little sentence for the AI to understand.
-            player_context = (
-                f"CONTEXT: You are speaking to an athlete. "
-                f"Their profile is: Sport - {profile.sport.name}, "
-                f"Position - {profile.position}, "
-                f"Graduation Year - {profile.graduation_year}. "
-                f"Use this information to personalize your advice."
-            )
-        except PlayerProfile.DoesNotExist:
-            # If there's no profile, no problem. We just proceed without context.
-            logger.info(f"No PlayerProfile found for user '{request.user.username}'.")
+            profile = SportProfile.objects.select_related('sport').filter(user=request.user).first()
+            if profile:
+                player_context = (
+                    f"CONTEXT: You are speaking to an athlete. "
+                    f"Their profile is: Sport - {profile.sport.name}, "
+                    f"Position - {profile.position}, "
+                    f"Graduation Year - {profile.graduation_year}. "
+                    f"Use this information to personalize your advice."
+                )
+        except SportProfile.DoesNotExist:
+            logger.info(f"No SportProfile found for user '{request.user.username}'.")
             pass
-        # --- MODIFICATION END ---
 
         try:
             prompt_name = os.getenv('PROMPT_COMPONENT_NAME', 'recruiter_core_prompt')
             core_prompt_base = PromptComponent.objects.get(name=prompt_name).content
-            
-            # --- MODIFICATION: Prepend player context to the core prompt ---
-            # Voilà! The agent is now instantly aware of the user's profile.
             core_prompt = f"{player_context}\n\n{core_prompt_base}" if player_context else core_prompt_base
-
         except PromptComponent.DoesNotExist:
             logger.warning(f"PromptComponent '{prompt_name}' not found. Using fallback.")
             core_prompt = "You are a helpful AI assistant."
@@ -412,19 +479,63 @@ def get_task_status(request, task_id):
         "status": task_result.status,
         "result": task_result.result if task_result.status == 'SUCCESS' else None,
     }
+
+    if result['status'] == 'SUCCESS':
+        try:
+            conv = Conversation.objects.filter(response_text=result['result']).latest('timestamp')
+            session = conv.session
+            # --- CORRECTED TRIGGER LOGIC ---
+            # Trigger if it's the first message OR if the summary is currently empty.
+            if session and (session.messages.count() == 1 or not session.summary):
+                generate_title_and_summary.delay(str(session.id))
+        except (Conversation.DoesNotExist, AttributeError):
+            pass 
+    
     return JsonResponse(result)
 
 @login_required
 def get_chat_sessions(request):
-    sessions = ChatSession.objects.filter(user=request.user).order_by('-created_at')
+    sessions = ChatSession.objects.filter(user=request.user).order_by('-updated_at')
     session_list = [
-        {'id': str(session.id), 'title': session.title} 
+        {'id': str(session.id), 'title': session.title, 'summary': session.summary} 
         for session in sessions
     ]
     return JsonResponse({'sessions': session_list})
 
-# ... (register and verify_email functions remain unchanged) ...
+@login_required
+def get_session_history(request, session_id):
+    try:
+        session = ChatSession.objects.get(id=session_id, user=request.user)
+        messages = session.messages.order_by('timestamp').values(
+            'prompt_text', 'response_text', 'timestamp'
+        )
+        history = []
+        for msg in messages:
+            history.append({'type': 'user', 'text': msg['prompt_text'], 'timestamp': msg['timestamp']})
+            history.append({'type': 'model', 'text': msg['response_text'], 'timestamp': msg['timestamp']})
+        return JsonResponse({'history': history})
+    except ChatSession.DoesNotExist:
+        return JsonResponse({'error': 'Session not found or access denied.'}, status=404)
+    except Exception as e:
+        logger.error(f"Error fetching session history for session {session_id}: {e}")
+        return JsonResponse({'error': 'An internal error occurred.'}, status=500)
+
+@login_required
+def delete_session(request, session_id):
+    if request.method == 'POST':
+        try:
+            session = ChatSession.objects.get(id=session_id, user=request.user)
+            session.delete()
+            return JsonResponse({'status': 'success', 'message': 'Session deleted.'})
+        except ChatSession.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Session not found or access denied.'}, status=404)
+        except Exception as e:
+            logger.error(f"Error deleting session {session_id}: {e}")
+            return JsonResponse({'status': 'error', 'message': 'An internal error occurred.'}, status=500)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
+
 def register(request):
+    # ... (code unchanged)
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
@@ -432,7 +543,6 @@ def register(request):
             user.is_active = False
             user.save()
             UserProfile.objects.create(user=user)
-            # ... rest of the function is unchanged
             token = default_token_generator.make_token(user)
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             verification_link = request.build_absolute_uri(
@@ -447,6 +557,7 @@ def register(request):
     return render(request, 'registration/register.html', {'form': form})
 
 def verify_email(request, uidb64, token):
+    # ... (code unchanged)
     try:
         uid = force_str(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)
@@ -778,6 +889,104 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(create_core_prompt),
     ]
+```
+
+--- 
+
+### File: `.\recruiting\migrations\0010_chatsession_updated_at_userprofile_city_and_more.py`
+
+```
+# Generated by Django 5.2.5 on 2025-10-06 15:18
+
+import django.db.models.deletion
+from django.conf import settings
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('recruiting', '0009_seed_prompt_components'),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name='chatsession',
+            name='updated_at',
+            field=models.DateTimeField(auto_now=True),
+        ),
+        migrations.AddField(
+            model_name='userprofile',
+            name='city',
+            field=models.CharField(blank=True, max_length=100),
+        ),
+        migrations.AddField(
+            model_name='userprofile',
+            name='high_school',
+            field=models.CharField(blank=True, max_length=200),
+        ),
+        migrations.AddField(
+            model_name='userprofile',
+            name='onboarding_complete',
+            field=models.BooleanField(default=False),
+        ),
+        migrations.AddField(
+            model_name='userprofile',
+            name='state',
+            field=models.CharField(blank=True, max_length=50),
+        ),
+        migrations.AddField(
+            model_name='userprofile',
+            name='zip_code',
+            field=models.CharField(blank=True, max_length=10),
+        ),
+        migrations.CreateModel(
+            name='SportProfile',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('position', models.CharField(blank=True, max_length=100)),
+                ('graduation_year', models.IntegerField(blank=True, null=True)),
+                ('height', models.CharField(blank=True, max_length=10)),
+                ('weight', models.IntegerField(blank=True, null=True)),
+                ('gpa', models.DecimalField(blank=True, decimal_places=2, max_digits=3, null=True)),
+                ('highlight_reel_url', models.URLField(blank=True, max_length=250)),
+                ('metrics', models.JSONField(blank=True, null=True)),
+                ('sport', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='recruiting.sport')),
+                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='sport_profiles', to=settings.AUTH_USER_MODEL)),
+            ],
+        ),
+        migrations.DeleteModel(
+            name='PlayerProfile',
+        ),
+    ]
+
+```
+
+--- 
+
+### File: `.\recruiting\migrations\0011_chatsession_summary.py`
+
+```
+# Generated by Django 5.2.5 on 2025-10-06 16:50
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('recruiting', '0010_chatsession_updated_at_userprofile_city_and_more'),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name='chatsession',
+            name='summary',
+            field=models.CharField(blank=True, max_length=255),
+        ),
+    ]
+
 ```
 
 --- 
