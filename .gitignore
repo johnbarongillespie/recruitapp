@@ -1,0 +1,16 @@
+# Environment Variables & Secrets
+.env
+
+# Virtual Environment
+venv/
+
+# Local Database
+db.sqlite3
+
+# Log files
+*.log
+debug.log
+
+# Python Cache
+__pycache__/
+*.pyc
