@@ -1,4 +1,0 @@
-Set-Content -Path .gitignore -Value @"
-# Environment Variables & Secrets
-# This is the most important line for security.
-.env
