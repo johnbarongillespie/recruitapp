@@ -5,6 +5,7 @@
 ```
 ./
     manage.py
+    requirements.txt
     recruiting/
         admin.py
         apps.py
@@ -64,6 +65,14 @@ def main():
 if __name__ == '__main__':
     main()
 
+```
+
+--- 
+
+### File: `.\requirements.txt`
+
+```
+Error reading file: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
 ```
 
 --- 
@@ -199,51 +208,36 @@ import os
 import json
 import vertexai
 from celery import shared_task
-from django.core.exceptions import ObjectDoesNotExist
-
-# --- DEFINITIVE IMPORT FOR MODERN SDK ---
-# In modern versions, GoogleSearchRetrieval is not imported directly.
-from vertexai.preview.generative_models import (
-    GenerativeModel,
-    Content,
-    Part,
-    Tool,
-)
+from vertexai.generative_models import GenerativeModel, Content, Part
 from .models import Conversation, ChatSession
 
-# --- This block runs once per worker process to initialize the connection ---
+# --- THIS BLOCK NOW RUNS ONLY ONCE WHEN THE WORKER PROCESS STARTS ---
+# This initializes the connection to Google Cloud, which is the slow part.
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 vertexai.init(project=PROJECT_ID, location=LOCATION)
 # -------------------------------------------------------------------
 
-@shared_task(bind=True)
-def get_ai_response_with_grounding(self, user_prompt, core_prompt, history_dicts, session_id, user_id):
+@shared_task
+def get_ai_response(user_prompt, core_prompt, history_dicts, session_id, user_id):
     """
-    Generates a response from the Vertex AI API using built-in Google Search grounding.
-    Includes robust error handling and retry logic.
+    A background task to get a response from the Vertex AI API.
     """
     try:
-        # --- DEFINITIVE FIX FOR MODERN SDK ---
-        # The grounding tool is created by calling the helper function without any arguments.
-        grounding_tool = Tool.from_google_search_retrieval()
-
-        # Initialize the model with the grounding tool.
+        # The model is now created inside the task, which is fast.
         model = GenerativeModel(
-            "gemini-2.5-pro",
-            system_instruction=[core_prompt],
-            tools=[grounding_tool],
+            "gemini-2.5-pro", # CORRECTED MODEL NAME
+            system_instruction=[core_prompt]
         )
-
-        # Construct the chat history from the provided dictionaries.
+        
+        # Recreate the Content objects from the dictionary representation
         history = [Content(role=item['role'], parts=[Part.from_text(p['text']) for p in item['parts']]) for item in history_dicts]
         
-        # Generate the response.
         chat = model.start_chat(history=history)
         response = chat.send_message(user_prompt)
         ai_response_text = response.text
 
-        # Save the conversation to the database.
+        # Save the conversation to the database AFTER getting a response
         chat_session = ChatSession.objects.get(id=session_id)
         Conversation.objects.create(
             session=chat_session,
@@ -251,32 +245,28 @@ def get_ai_response_with_grounding(self, user_prompt, core_prompt, history_dicts
             prompt_text=user_prompt,
             response_text=ai_response_text
         )
+
         return ai_response_text
-
-    except ObjectDoesNotExist:
-        print(f"CRITICAL: ChatSession with ID {session_id} not found. Task cannot proceed.")
-        return f"Error: The specified chat session does not exist."
     except Exception as e:
-        print(f"An unexpected error occurred in grounded agent task: {e}. Retrying in 60s.")
-        raise self.retry(exc=e, countdown=60)
+        # Handle exceptions and return an error message
+        return f"An error occurred: {str(e)}"
 
-
-@shared_task(bind=True)
-def generate_title_and_summary(self, session_id):
+@shared_task
+def generate_title_and_summary(session_id):
     """
     A background task to generate a title and summary for a chat session.
     """
     try:
         session = ChatSession.objects.get(id=session_id)
-        # Corrected the variable name from first_.message to first_message
-        first_message = session.messages.order_by('timestamp').first()
+        # Get the first user prompt and the first agent response
+        first_messages = list(session.messages.order_by('timestamp')[:2])
 
-        if not first_message:
-            return "Not enough context to generate summary; session has no messages."
+        if len(first_messages) < 1: # Only need the first prompt and response
+            return "Not enough context to generate summary."
 
         conversation_context = (
-            f"USER: {first_message.prompt_text}\n\n"
-            f"AGENT: {first_message.response_text}"
+            f"USER: {first_messages[0].prompt_text}\n\n"
+            f"AGENT: {first_messages[0].response_text}"
         )
 
         system_prompt = (
@@ -286,10 +276,18 @@ def generate_title_and_summary(self, session_id):
             "Respond ONLY with a valid JSON object with two keys: 'title' and 'summary'."
         )
         
-        model = GenerativeModel("gemini-2.5-pro", system_instruction=[system_prompt])
+        model = GenerativeModel(
+            "gemini-2.5-pro", # CORRECTED MODEL NAME
+            system_instruction=[system_prompt]
+        )
+        
         response = model.generate_content(conversation_context)
         
-        cleaned_text = response.text.strip().replace("```json", "").replace("```", "")
+        # Clean the response and parse the JSON
+        cleaned_text = response.text.strip()
+        if cleaned_text.startswith('```json'):
+            cleaned_text = cleaned_text[7:-3].strip()
+        
         response_json = json.loads(cleaned_text)
         
         new_title = response_json.get('title')
@@ -298,23 +296,15 @@ def generate_title_and_summary(self, session_id):
         if new_title and new_summary:
             session.title = new_title
             session.summary = new_summary
-            session.save(update_fields=['title', 'summary'])
+            session.save(update_fields=['title', 'summary', 'updated_at'])
             return f"Updated session {session_id} with title and summary."
         else:
             return f"Failed to extract title/summary from AI response for session {session_id}."
 
-    except ObjectDoesNotExist:
-        print(f"ERROR: Could not find ChatSession {session_id} to generate summary.")
-        return f"Failed to find session {session_id}."
     except Exception as e:
+        # Log the error but don't crash the worker
         print(f"Error generating title/summary for session {session_id}: {e}")
-        raise self.retry(exc=e, countdown=60)
-
-
-
-
-
-
+        return f"Failed to update session {session_id}."
 ```
 
 --- 
@@ -380,6 +370,9 @@ urlpatterns = [
 
 ```
 import os
+import vertexai
+from vertexai.generative_models import GenerativeModel, Content, Part
+from dotenv import load_dotenv
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
 import json
@@ -394,10 +387,13 @@ from django.core.mail import send_mail
 from django.urls import reverse
 import logging
 from celery.result import AsyncResult
-# --- CORRECTED: Import the renamed grounding task ---
-from .tasks import get_ai_response_with_grounding, generate_title_and_summary
+from .tasks import get_ai_response, generate_title_and_summary
 
 logger = logging.getLogger(__name__)
+
+# --- Vertex AI Initialization ---
+load_dotenv()
+# ------------------------------------
 
 def landing_page(request):
     return render(request, 'recruiting/landing_page.html')
@@ -424,7 +420,7 @@ def ask_agent(request):
             if session_id:
                 chat_session = ChatSession.objects.get(id=session_id, user=request.user)
             else:
-                CHAT_LIMIT = 5 # Increased chat limit for testing
+                CHAT_LIMIT = 3
                 current_session_count = ChatSession.objects.filter(user=request.user).count()
                 if current_session_count >= CHAT_LIMIT:
                     return JsonResponse({'error': 'Chat limit reached.'}, status=403)
@@ -449,11 +445,10 @@ def ask_agent(request):
             logger.info(f"No SportProfile found for user '{request.user.username}'.")
             pass
 
-        prompt_name = os.getenv('PROMPT_COMPONENT_NAME', 'recruiter_core_prompt')
         try:
+            prompt_name = os.getenv('PROMPT_COMPONENT_NAME', 'recruiter_core_prompt')
             core_prompt_base = PromptComponent.objects.get(name=prompt_name).content
             core_prompt = f"{player_context}\n\n{core_prompt_base}" if player_context else core_prompt_base
-
         except PromptComponent.DoesNotExist:
             logger.warning(f"PromptComponent '{prompt_name}' not found. Using fallback.")
             core_prompt = "You are a helpful AI assistant."
@@ -464,8 +459,7 @@ def ask_agent(request):
             history_dicts.append({"role": "user", "parts": [{"text": conv.prompt_text}]})
             history_dicts.append({"role": "model", "parts": [{"text": conv.response_text}]})
         
-        # --- CORRECTED: Call the renamed task ---
-        task = get_ai_response_with_grounding.delay(
+        task = get_ai_response.delay(
             user_prompt, 
             core_prompt, 
             history_dicts, 
@@ -473,7 +467,7 @@ def ask_agent(request):
             request.user.id
         )
         
-        return JsonResponse({'task_id': task.id, 'session_id': str(session_id)})
+        return JsonResponse({'task_id': task.id, 'session_id': session_id})
 
     return JsonResponse({'error': 'Invalid request method.'}, status=405)
 
@@ -488,8 +482,10 @@ def get_task_status(request, task_id):
 
     if result['status'] == 'SUCCESS':
         try:
-            conv = Conversation.objects.select_related('session').filter(response_text=result['result']).latest('timestamp')
+            conv = Conversation.objects.filter(response_text=result['result']).latest('timestamp')
             session = conv.session
+            # --- CORRECTED TRIGGER LOGIC ---
+            # Trigger if it's the first message OR if the summary is currently empty.
             if session and (session.messages.count() == 1 or not session.summary):
                 generate_title_and_summary.delay(str(session.id))
         except (Conversation.DoesNotExist, AttributeError):
@@ -539,6 +535,7 @@ def delete_session(request, session_id):
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 
 def register(request):
+    # ... (code unchanged)
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
@@ -551,15 +548,16 @@ def register(request):
             verification_link = request.build_absolute_uri(
                 reverse('verify_email', kwargs={'uidb64': uid, 'token': token})
             )
-            subject = 'Activate Your RecruitApp Agent Account'
+            subject = 'Activate Your RecruitTalk Agent Account'
             message = f'Hello {user.username},\n\nPlease click the link below to verify your email and activate your account:\n\n{verification_link}\n\nThank you.'
-            send_mail(subject, message, os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@recruitapp.ai'), [user.email])
-            return render(request, 'registration/verification_sent.html')
+            send_mail(subject, message, 'from@example.com', [user.email])
+            return HttpResponse("Verification email sent. Please check your email (and the console) to complete registration.")
     else:
         form = CustomUserCreationForm()
     return render(request, 'registration/register.html', {'form': form})
 
 def verify_email(request, uidb64, token):
+    # ... (code unchanged)
     try:
         uid = force_str(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)
@@ -568,15 +566,13 @@ def verify_email(request, uidb64, token):
 
     if user is not None and default_token_generator.check_token(user, token):
         user.is_active = True
-        profile, _ = UserProfile.objects.get_or_create(user=user)
+        profile, created = UserProfile.objects.get_or_create(user=user)
         profile.email_verified = True
         profile.save()
         user.save()
-        return redirect('account_login')
+        return redirect('login')
     else:
-        return render(request, 'registration/verification_invalid.html')
-
-
+        return HttpResponse('The verification link is invalid.')
 ```
 
 --- 
