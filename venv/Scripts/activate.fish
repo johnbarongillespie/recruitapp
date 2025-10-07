@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV 'C:\Users\johnb\OneDrive\Desktop\AxiomAgent\venv'
+set -gx VIRTUAL_ENV 'C:\HackworthAI\RecruitApp\venv'
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"Scripts $PATH

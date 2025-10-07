@@ -1,28 +1,23 @@
 import os
-import vertexai
-from vertexai.generative_models import GenerativeModel, Content, Part
-from dotenv import load_dotenv
-from django.shortcuts import render, redirect
-from django.http import JsonResponse, HttpResponse
 import json
-from .models import PromptComponent, Conversation, UserProfile, ChatSession, SportProfile, Sport 
-from .forms import CustomUserCreationForm
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
-from django.contrib.auth.tokens import default_token_generator
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes, force_str
-from django.core.mail import send_mail
-from django.urls import reverse
 import logging
 from celery.result import AsyncResult
+from django.shortcuts import render, redirect
+from django.http import JsonResponse, HttpResponse
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.urls import reverse
+from django.core.mail import send_mail
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.contrib.auth.tokens import default_token_generator
+
+from .models import PromptComponent, Conversation, UserProfile, ChatSession, SportProfile, Sport 
+from .forms import CustomUserCreationForm
+# --- CORRECTED: Import the renamed task ---
 from .tasks import get_ai_response, generate_title_and_summary
 
 logger = logging.getLogger(__name__)
-
-# --- Vertex AI Initialization ---
-load_dotenv()
-# ------------------------------------
 
 def landing_page(request):
     return render(request, 'recruiting/landing_page.html')
@@ -49,7 +44,7 @@ def ask_agent(request):
             if session_id:
                 chat_session = ChatSession.objects.get(id=session_id, user=request.user)
             else:
-                CHAT_LIMIT = 3
+                CHAT_LIMIT = 5
                 current_session_count = ChatSession.objects.filter(user=request.user).count()
                 if current_session_count >= CHAT_LIMIT:
                     return JsonResponse({'error': 'Chat limit reached.'}, status=403)
@@ -74,10 +69,11 @@ def ask_agent(request):
             logger.info(f"No SportProfile found for user '{request.user.username}'.")
             pass
 
+        prompt_name = os.getenv('PROMPT_COMPONENT_NAME', 'recruiter_core_prompt')
         try:
-            prompt_name = os.getenv('PROMPT_COMPONENT_NAME', 'recruiter_core_prompt')
             core_prompt_base = PromptComponent.objects.get(name=prompt_name).content
             core_prompt = f"{player_context}\n\n{core_prompt_base}" if player_context else core_prompt_base
+
         except PromptComponent.DoesNotExist:
             logger.warning(f"PromptComponent '{prompt_name}' not found. Using fallback.")
             core_prompt = "You are a helpful AI assistant."
@@ -88,6 +84,7 @@ def ask_agent(request):
             history_dicts.append({"role": "user", "parts": [{"text": conv.prompt_text}]})
             history_dicts.append({"role": "model", "parts": [{"text": conv.response_text}]})
         
+        # --- CORRECTED: Call the renamed task ---
         task = get_ai_response.delay(
             user_prompt, 
             core_prompt, 
@@ -96,7 +93,7 @@ def ask_agent(request):
             request.user.id
         )
         
-        return JsonResponse({'task_id': task.id, 'session_id': session_id})
+        return JsonResponse({'task_id': task.id, 'session_id': str(session_id)})
 
     return JsonResponse({'error': 'Invalid request method.'}, status=405)
 
@@ -111,10 +108,8 @@ def get_task_status(request, task_id):
 
     if result['status'] == 'SUCCESS':
         try:
-            conv = Conversation.objects.filter(response_text=result['result']).latest('timestamp')
+            conv = Conversation.objects.select_related('session').filter(response_text=result['result']).latest('timestamp')
             session = conv.session
-            # --- CORRECTED TRIGGER LOGIC ---
-            # Trigger if it's the first message OR if the summary is currently empty.
             if session and (session.messages.count() == 1 or not session.summary):
                 generate_title_and_summary.delay(str(session.id))
         except (Conversation.DoesNotExist, AttributeError):
@@ -164,7 +159,6 @@ def delete_session(request, session_id):
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 
 def register(request):
-    # ... (code unchanged)
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
@@ -177,16 +171,15 @@ def register(request):
             verification_link = request.build_absolute_uri(
                 reverse('verify_email', kwargs={'uidb64': uid, 'token': token})
             )
-            subject = 'Activate Your RecruitTalk Agent Account'
+            subject = 'Activate Your RecruitApp Agent Account'
             message = f'Hello {user.username},\n\nPlease click the link below to verify your email and activate your account:\n\n{verification_link}\n\nThank you.'
-            send_mail(subject, message, 'from@example.com', [user.email])
-            return HttpResponse("Verification email sent. Please check your email (and the console) to complete registration.")
+            send_mail(subject, message, os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@recruitapp.ai'), [user.email])
+            return render(request, 'registration/verification_sent.html')
     else:
         form = CustomUserCreationForm()
     return render(request, 'registration/register.html', {'form': form})
 
 def verify_email(request, uidb64, token):
-    # ... (code unchanged)
     try:
         uid = force_str(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)
@@ -195,10 +188,11 @@ def verify_email(request, uidb64, token):
 
     if user is not None and default_token_generator.check_token(user, token):
         user.is_active = True
-        profile, created = UserProfile.objects.get_or_create(user=user)
+        profile, _ = UserProfile.objects.get_or_create(user=user)
         profile.email_verified = True
         profile.save()
         user.save()
-        return redirect('login')
+        return redirect('account_login')
     else:
-        return HttpResponse('The verification link is invalid.')
+        return render(request, 'registration/verification_invalid.html')
+
