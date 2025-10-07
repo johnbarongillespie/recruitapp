@@ -1,0 +1,15 @@
+# High-level dependencies for RecruitApp
+
+django
+gunicorn
+psycopg2-binary
+celery[redis]
+django-allauth
+python-dotenv
+google-cloud-aiplatform
+google-api-python-client
+playwright
+whitenoise
+dj-database-url
+requests
+beautifulsoup4
