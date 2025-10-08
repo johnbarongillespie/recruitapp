@@ -1,6 +1,4 @@
 import os
-import vertexai
-from vertexai.generative_models import GenerativeModel, Content, Part
 from dotenv import load_dotenv
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
@@ -17,6 +15,7 @@ from django.urls import reverse
 import logging
 from celery.result import AsyncResult
 from .tasks import get_ai_response, generate_title_and_summary
+from datetime import datetime # <-- ADDED THIS IMPORT
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +76,18 @@ def ask_agent(request):
         try:
             prompt_name = os.getenv('PROMPT_COMPONENT_NAME', 'recruiter_core_prompt')
             core_prompt_base = PromptComponent.objects.get(name=prompt_name).content
-            core_prompt = f"{player_context}\n\n{core_prompt_base}" if player_context else core_prompt_base
+            
+            # --- MODIFICATION STARTS HERE ---
+            # 1. Get the current date and format it.
+            current_date_str = datetime.now().strftime('%B %d, %Y')
+            
+            # 2. Create a new instruction that includes the current date.
+            date_instruction = f"IMPORTANT: You must operate as if the current date is always {current_date_str}. Do not refer to this date as being in the future."
+            
+            # 3. Combine the instructions to create the final core prompt.
+            core_prompt = f"{date_instruction}\n\n{player_context}\n\n{core_prompt_base}"
+            # --- MODIFICATION ENDS HERE ---
+
         except PromptComponent.DoesNotExist:
             logger.warning(f"PromptComponent '{prompt_name}' not found. Using fallback.")
             core_prompt = "You are a helpful AI assistant."

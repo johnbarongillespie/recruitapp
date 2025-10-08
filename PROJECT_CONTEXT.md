@@ -29,10 +29,6 @@
             0010_chatsession_updated_at_userprofile_city_and_more.py
             0011_chatsession_summary.py
             __init__.py
-    static/
-        recruiting/
-            animations/
-            images/
 ```
 
 ## File Contents
@@ -208,36 +204,73 @@ import os
 import json
 import vertexai
 from celery import shared_task
-from vertexai.generative_models import GenerativeModel, Content, Part
+from django.core.exceptions import ObjectDoesNotExist
+import requests
+
+from vertexai.generative_models import (
+    GenerativeModel, Part, Content, Tool, FunctionDeclaration,
+    HarmBlockThreshold, HarmCategory
+)
+
 from .models import Conversation, ChatSession
 
-# --- THIS BLOCK NOW RUNS ONLY ONCE WHEN THE WORKER PROCESS STARTS ---
-# This initializes the connection to Google Cloud, which is the slow part.
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 vertexai.init(project=PROJECT_ID, location=LOCATION)
-# -------------------------------------------------------------------
 
-@shared_task
-def get_ai_response(user_prompt, core_prompt, history_dicts, session_id, user_id):
+search_tool = Tool(
+    function_declarations=[
+        FunctionDeclaration(
+            name="google_search",
+            description="This is a tool for searching the internet for up-to-date information.",
+            parameters={
+                "type": "object",
+                "properties": { "query": { "type": "string", "description": "The query to search for"} },
+                "required": ["query"]
+            },
+        )
+    ]
+)
+
+def google_search(query):
     """
-    A background task to get a response from the Vertex AI API.
+    Executes a search using a real search API.
+    For this example, a mock response will be used.
+    In a real application, connect to a service like Google Search API.
+    """
+    print(f"Executing search for query: '{query}'")
+    mock_search_results = {
+        "results": [
+            {"title": "Vertex AI SDK for Python", "snippet": "Latest docs..."},
+            {"title": "Google Cloud Blog", "snippet": "Gemini 2.5 Flash GA..."},
+        ]
+    }
+    return mock_search_results
+
+@shared_task(bind=True)
+def get_ai_response(self, user_prompt, core_prompt, history_dicts, session_id, user_id):
+    """
+    Generates a response using automatic tool execution.
     """
     try:
-        # The model is now created inside the task, which is fast.
         model = GenerativeModel(
-            "gemini-2.5-pro", # CORRECTED MODEL NAME
-            system_instruction=[core_prompt]
+            "gemini-2.5-flash",
+            system_instruction=[core_prompt],
+            tools=[search_tool]
         )
-        
-        # Recreate the Content objects from the dictionary representation
+
         history = [Content(role=item['role'], parts=[Part.from_text(p['text']) for p in item['parts']]) for item in history_dicts]
         
-        chat = model.start_chat(history=history)
-        response = chat.send_message(user_prompt)
-        ai_response_text = response.text
+        messages_for_api = history + [Content(role="user", parts=[Part.from_text(user_prompt)])]
 
-        # Save the conversation to the database AFTER getting a response
+        response = model.generate_content(
+            messages_for_api,
+            tool_config={"tool_mode": "auto"},
+            tools_data={"google_search": google_search}
+        )
+
+        ai_response_text = response.text
+        
         chat_session = ChatSession.objects.get(id=session_id)
         Conversation.objects.create(
             session=chat_session,
@@ -245,66 +278,47 @@ def get_ai_response(user_prompt, core_prompt, history_dicts, session_id, user_id
             prompt_text=user_prompt,
             response_text=ai_response_text
         )
-
         return ai_response_text
-    except Exception as e:
-        # Handle exceptions and return an error message
-        return f"An error occurred: {str(e)}"
 
-@shared_task
-def generate_title_and_summary(session_id):
-    """
-    A background task to generate a title and summary for a chat session.
-    """
+    except ObjectDoesNotExist:
+        return "Chat session not found."
+    except Exception as e:
+        print(f"An unexpected error occurred in AI agent task: {e}. Retrying in 60s.")
+        raise self.retry(exc=e, countdown=60)
+
+@shared_task(bind=True)
+def generate_title_and_summary(self, session_id):
     try:
         session = ChatSession.objects.get(id=session_id)
-        # Get the first user prompt and the first agent response
-        first_messages = list(session.messages.order_by('timestamp')[:2])
-
-        if len(first_messages) < 1: # Only need the first prompt and response
-            return "Not enough context to generate summary."
-
-        conversation_context = (
-            f"USER: {first_messages[0].prompt_text}\n\n"
-            f"AGENT: {first_messages[0].response_text}"
-        )
-
+        messages = session.messages.order_by('timestamp')[:4]
+        if not messages or len(messages) < 2:
+            return "Not enough context for summary."
+        context_parts = []
+        for msg in messages:
+            context_parts.append(f"USER: {msg.prompt_text}")
+            if msg.response_text:
+                context_parts.append(f"AGENT: {msg.response_text}")
+        conversation_context = "\n\n".join(context_parts)
         system_prompt = (
-            "You are a summarization expert. Based on the following conversation, "
-            "generate a concise title and a one-sentence summary. "
-            "The title should be 5 words or less. "
-            "Respond ONLY with a valid JSON object with two keys: 'title' and 'summary'."
+            "You are a summarization expert... Respond ONLY with a valid JSON object..."
         )
-        
-        model = GenerativeModel(
-            "gemini-2.5-pro", # CORRECTED MODEL NAME
-            system_instruction=[system_prompt]
-        )
-        
+        model = GenerativeModel("gemini-2.5-flash", system_instruction=[system_prompt])
         response = model.generate_content(conversation_context)
-        
-        # Clean the response and parse the JSON
-        cleaned_text = response.text.strip()
-        if cleaned_text.startswith('```json'):
-            cleaned_text = cleaned_text[7:-3].strip()
-        
+        cleaned_text = response.text.strip().replace("```json", "").replace("```", "")
         response_json = json.loads(cleaned_text)
-        
         new_title = response_json.get('title')
         new_summary = response_json.get('summary')
-
         if new_title and new_summary:
             session.title = new_title
             session.summary = new_summary
-            session.save(update_fields=['title', 'summary', 'updated_at'])
-            return f"Updated session {session_id} with title and summary."
+            session.save(update_fields=['title', 'summary'])
+            return f"Updated session {session_id}."
         else:
-            return f"Failed to extract title/summary from AI response for session {session_id}."
-
+            return f"Failed to extract title/summary for session {session_id}."
     except Exception as e:
-        # Log the error but don't crash the worker
         print(f"Error generating title/summary for session {session_id}: {e}")
-        return f"Failed to update session {session_id}."
+        raise self.retry(exc=e, countdown=60)
+
 ```
 
 --- 
@@ -388,6 +402,7 @@ from django.urls import reverse
 import logging
 from celery.result import AsyncResult
 from .tasks import get_ai_response, generate_title_and_summary
+from datetime import datetime # <-- ADDED THIS IMPORT
 
 logger = logging.getLogger(__name__)
 
@@ -448,7 +463,18 @@ def ask_agent(request):
         try:
             prompt_name = os.getenv('PROMPT_COMPONENT_NAME', 'recruiter_core_prompt')
             core_prompt_base = PromptComponent.objects.get(name=prompt_name).content
-            core_prompt = f"{player_context}\n\n{core_prompt_base}" if player_context else core_prompt_base
+            
+            # --- MODIFICATION STARTS HERE ---
+            # 1. Get the current date and format it.
+            current_date_str = datetime.now().strftime('%B %d, %Y')
+            
+            # 2. Create a new instruction that includes the current date.
+            date_instruction = f"IMPORTANT: You must operate as if the current date is always {current_date_str}. Do not refer to this date as being in the future."
+            
+            # 3. Combine the instructions to create the final core prompt.
+            core_prompt = f"{date_instruction}\n\n{player_context}\n\n{core_prompt_base}"
+            # --- MODIFICATION ENDS HERE ---
+
         except PromptComponent.DoesNotExist:
             logger.warning(f"PromptComponent '{prompt_name}' not found. Using fallback.")
             core_prompt = "You are a helpful AI assistant."

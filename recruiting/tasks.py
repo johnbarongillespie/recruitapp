@@ -3,31 +3,167 @@ import json
 import vertexai
 from celery import shared_task
 from django.core.exceptions import ObjectDoesNotExist
-from vertexai.generative_models import GenerativeModel, Content, Part
+from json.decoder import JSONDecodeError
+import requests # Used for the actual Google Custom Search API call
+
+from vertexai.generative_models import (
+    GenerativeModel, Part, Content, Tool, FunctionDeclaration,
+    HarmBlockThreshold, HarmCategory,
+    ToolConfig,
+)
+
 from .models import Conversation, ChatSession
 
-# --- Vertex AI SDK Initialization ---
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 vertexai.init(project=PROJECT_ID, location=LOCATION)
-# ------------------------------------
+
+# --- Google Custom Search API Configuration ---
+CUSTOM_SEARCH_ENGINE_ID = os.getenv("CUSTOM_SEARCH_ENGINE_ID")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+SEARCH_API_URL = "https://www.googleapis.com/customsearch/v1"
+
+# --- Tool Definitions ---
+
+search_tool = Tool(
+    function_declarations=[
+        FunctionDeclaration(
+            name="google_search",
+            description="This is a tool for searching the internet for up-to-date information.",
+            parameters={
+                "type": "object",
+                "properties": { "query": { "type": "string", "description": "The query to search for"} },
+                "required": ["query"]
+            },
+        )
+    ]
+)
+
+# Define the ToolConfig object for automatic function calling
+TOOL_CONFIG_AUTO = ToolConfig(
+    function_calling_config=ToolConfig.FunctionCallingConfig(
+        mode=ToolConfig.FunctionCallingConfig.Mode.AUTO
+    )
+)
+
+def google_search(query):
+    """
+    Executes a search using the Google Custom Search API.
+    Consolidates results into a single context string for the LLM.
+    """
+    print(f"Executing REAL Google Search for query: '{query}'")
+    
+    if not GOOGLE_API_KEY or not CUSTOM_SEARCH_ENGINE_ID:
+        return {"error": "Search API keys are not configured correctly."}
+    
+    params = {
+        'key': GOOGLE_API_KEY,
+        'cx': CUSTOM_SEARCH_ENGINE_ID,
+        'q': query,
+        'num': 5, # Request up to 5 results
+    }
+
+    try:
+        response = requests.get(SEARCH_API_URL, params=params, timeout=5)
+        response.raise_for_status() # Raise exception for bad status codes
+        search_data = response.json()
+        
+        context_string = "" 
+        
+        for i, item in enumerate(search_data.get('items', [])):
+            context_string += (
+                f"Result {i+1}:\n"
+                f"Title: {item.get('title')}\n"
+                f"Text: {item.get('snippet')}\n"
+                f"Source URL: {item.get('link')}\n\n"
+            )
+        
+        if not context_string:
+            return {"search_results": "No relevant search results found."}
+
+        return {"search_context": context_string}
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error connecting to Google Search API: {e}")
+        return {"error": "Search service is currently unavailable or API limit reached."}
+    except Exception as e:
+        print(f"An unexpected error occurred during search processing: {e}")
+        return {"error": "An internal error occurred during search."}
+
+
+# --- AI Response Task ---
 
 @shared_task(bind=True)
 def get_ai_response(self, user_prompt, core_prompt, history_dicts, session_id, user_id):
     """
-    Generates a response from the Vertex AI API using a direct call for stability.
+    Generates a response, handling tool execution manually, including multiple function calls.
     """
     try:
         model = GenerativeModel(
-            "gemini-2.5-pro",
-            system_instruction=[core_prompt]
+            "gemini-2.5-flash",
+            system_instruction=[core_prompt],
+            tools=[search_tool]
         )
+
         history = [Content(role=item['role'], parts=[Part.from_text(p['text']) for p in item['parts']]) for item in history_dicts]
         
-        chat = model.start_chat(history=history)
-        response = chat.send_message(user_prompt)
-        ai_response_text = response.text
+        messages_for_api = history + [Content(role="user", parts=[Part.from_text(user_prompt)])]
 
+        # 1. First call to the model
+        response = model.generate_content(
+            messages_for_api,
+            tool_config=TOOL_CONFIG_AUTO
+        )
+
+        function_calls = None
+        if response.candidates and response.candidates[0].function_calls:
+            function_calls = response.candidates[0].function_calls
+            
+        
+        if function_calls:
+            
+            # The model's content which consists of one or more function_call parts
+            model_function_call_content = response.candidates[0].content
+            
+            # Append the model's request (all parts) to the history
+            # This is necessary even if it only contains function_call Parts
+            messages_for_api.append(model_function_call_content)
+            
+            tool_responses = []
+
+            # 2. Iterate through ALL function_call parts generated by the model
+            for part in model_function_call_content.parts:
+                if part.function_call:
+                    function_call = part.function_call
+                    function_name = function_call.name
+                    
+                    if function_name == "google_search":
+                        args = dict(function_call.args)
+                        
+                        # Execute the search tool
+                        tool_output = google_search(**args)
+                        
+                        # Store the result as a FunctionResponse Part
+                        tool_responses.append(
+                            Part.from_function_response(
+                                name=function_name,
+                                response=tool_output
+                            )
+                        )
+
+            # 3. Append ALL tool responses to the history
+            if tool_responses:
+                messages_for_api.append(
+                    Content(role="tool", parts=tool_responses)
+                )
+
+                # 4. Second call to the model to synthesize the final text response
+                response = model.generate_content(messages_for_api, tool_config=TOOL_CONFIG_AUTO)
+            
+        # This is where the final text is extracted, which should now work
+        # after the history was correctly updated with the tool response.
+        ai_response_text = response.text
+        
         chat_session = ChatSession.objects.get(id=session_id)
         Conversation.objects.create(
             session=chat_session,
@@ -38,51 +174,65 @@ def get_ai_response(self, user_prompt, core_prompt, history_dicts, session_id, u
         return ai_response_text
 
     except ObjectDoesNotExist:
-        print(f"CRITICAL: ChatSession with ID {session_id} not found.")
-        return f"Error: The specified chat session does not exist."
+        return "Chat session not found."
     except Exception as e:
+        # Changed the logging style back to the original for consistency but keep the retry
         print(f"An unexpected error occurred in AI agent task: {e}. Retrying in 60s.")
         raise self.retry(exc=e, countdown=60)
 
+# --- Title and Summary Task (Unchanged) ---
+
 @shared_task(bind=True)
 def generate_title_and_summary(self, session_id):
-    """
-    A background task to generate a title and summary for a chat session.
-    """
     try:
         session = ChatSession.objects.get(id=session_id)
-        first_message = session.messages.order_by('timestamp').first()
-
-        if not first_message:
+        messages = session.messages.order_by('timestamp')[:4] 
+        if not messages or len(messages) < 2:
             return "Not enough context for summary."
-
-        conversation_context = f"USER: {first_message.prompt_text}\n\nAGENT: {first_message.response_text}"
+            
+        context_parts = []
+        for msg in messages:
+            context_parts.append(f"USER: {msg.prompt_text}")
+            if msg.response_text:
+                context_parts.append(f"AGENT: {msg.response_text}")
+                
+        conversation_context = "\n\n".join(context_parts)
+        
         system_prompt = (
-            "You are a summarization expert. Based on the following conversation, "
-            "generate a concise title (5 words or less) and a one-sentence summary. "
-            "Respond ONLY with a valid JSON object with two keys: 'title' and 'summary'."
+            "You are a summarization expert. Analyze the provided conversation snippet. "
+            "Generate a concise, engaging title (max 5 words) and a brief summary (max 20 words). "
+            "Respond ONLY with a single valid JSON object containing the keys 'title' and 'summary'. "
+            "DO NOT include any markdown fences (```json) or introductory text."
         )
         
-        model = GenerativeModel("gemini-2.5-pro", system_instruction=[system_prompt])
+        model = GenerativeModel("gemini-2.5-flash", system_instruction=[system_prompt])
         response = model.generate_content(conversation_context)
         
-        cleaned_text = response.text.strip().replace("```json", "").replace("```", "")
-        response_json = json.loads(cleaned_text)
+        raw_text = response.text.strip()
         
-        new_title = response_json.get('title')
-        new_summary = response_json.get('summary')
+        cleaned_text = raw_text.replace("```json", "").replace("```", "").strip()
+        
+        try:
+            response_json = json.loads(cleaned_text)
+            new_title = response_json.get('title')
+            new_summary = response_json.get('summary')
+            
+            if new_title and new_summary:
+                session.title = new_title
+                session.summary = new_summary
+                session.save(update_fields=['title', 'summary'])
+                return f"Updated session {session_id}."
+            else:
+                print(f"Failed to extract title/summary for session {session_id}. Keys missing in valid JSON: {response_json}")
+                return f"Failed to extract title/summary for session {session_id}."
 
-        if new_title and new_summary:
-            session.title = new_title
-            session.summary = new_summary
-            session.save(update_fields=['title', 'summary'])
-            return f"Updated session {session_id}."
-        else:
-            return f"Failed to extract title/summary for session {session_id}."
-
-    except ObjectDoesNotExist:
-        print(f"ERROR: Could not find ChatSession {session_id} to generate summary.")
-        return f"Failed to find session {session_id}."
+        except JSONDecodeError as jde:
+            print(f"JSON Decoding Error for session {session_id}: {jde}")
+            print(f"Raw Model Response: {raw_text}")
+            return f"Failed to extract title/summary for session {session_id} due to bad JSON formatting."
+            
+    except ChatSession.DoesNotExist:
+        return f"Chat session {session_id} not found."
     except Exception as e:
         print(f"Error generating title/summary for session {session_id}: {e}")
         raise self.retry(exc=e, countdown=60)
