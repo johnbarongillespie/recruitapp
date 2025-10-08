@@ -4,7 +4,7 @@ import vertexai
 from celery import shared_task
 from django.core.exceptions import ObjectDoesNotExist
 from json.decoder import JSONDecodeError
-import requests # Used for the actual Google Custom Search API call
+import requests 
 
 from vertexai.generative_models import (
     GenerativeModel, Part, Content, Tool, FunctionDeclaration,
@@ -54,7 +54,8 @@ def google_search(query):
     print(f"Executing REAL Google Search for query: '{query}'")
     
     if not GOOGLE_API_KEY or not CUSTOM_SEARCH_ENGINE_ID:
-        return {"error": "Search API keys are not configured correctly."}
+        # Added a highly visible error message for debugging credential issues
+        return {"error": "CRITICAL CREDENTIAL ERROR: Search API keys are missing or invalid."}
     
     params = {
         'key': GOOGLE_API_KEY,
@@ -65,7 +66,9 @@ def google_search(query):
 
     try:
         response = requests.get(SEARCH_API_URL, params=params, timeout=5)
-        response.raise_for_status() # Raise exception for bad status codes
+        
+        # We assume the HTTP request succeeded, but if not, raise the status error
+        response.raise_for_status() 
         search_data = response.json()
         
         context_string = "" 
@@ -85,7 +88,8 @@ def google_search(query):
 
     except requests.exceptions.RequestException as e:
         print(f"Error connecting to Google Search API: {e}")
-        return {"error": "Search service is currently unavailable or API limit reached."}
+        # Return a structured error for the LLM to synthesize
+        return {"error": f"Search Service Unavailable. HTTP Request Failed: {e}"}
     except Exception as e:
         print(f"An unexpected error occurred during search processing: {e}")
         return {"error": "An internal error occurred during search."}
@@ -122,11 +126,8 @@ def get_ai_response(self, user_prompt, core_prompt, history_dicts, session_id, u
         
         if function_calls:
             
-            # The model's content which consists of one or more function_call parts
             model_function_call_content = response.candidates[0].content
             
-            # Append the model's request (all parts) to the history
-            # This is necessary even if it only contains function_call Parts
             messages_for_api.append(model_function_call_content)
             
             tool_responses = []
@@ -140,10 +141,8 @@ def get_ai_response(self, user_prompt, core_prompt, history_dicts, session_id, u
                     if function_name == "google_search":
                         args = dict(function_call.args)
                         
-                        # Execute the search tool
                         tool_output = google_search(**args)
                         
-                        # Store the result as a FunctionResponse Part
                         tool_responses.append(
                             Part.from_function_response(
                                 name=function_name,
@@ -160,10 +159,23 @@ def get_ai_response(self, user_prompt, core_prompt, history_dicts, session_id, u
                 # 4. Second call to the model to synthesize the final text response
                 response = model.generate_content(messages_for_api, tool_config=TOOL_CONFIG_AUTO)
             
-        # This is where the final text is extracted, which should now work
-        # after the history was correctly updated with the tool response.
-        ai_response_text = response.text
         
+        # --- FIX: Defensive text extraction to prevent SDK ValueError from crashing task ---
+        try:
+            ai_response_text = response.text
+        except ValueError:
+            # Fallback to direct extraction of text from the first candidate part
+            if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
+                text_part = next((p.text for p in response.candidates[0].content.parts if p.text), None)
+                if text_part:
+                    ai_response_text = text_part
+                else:
+                    # If all else fails, use a generic error message
+                    ai_response_text = "I encountered an internal error while synthesizing my response, but the search was successful. Please try asking again."
+            else:
+                ai_response_text = "I encountered an unrecoverable internal error."
+
+
         chat_session = ChatSession.objects.get(id=session_id)
         Conversation.objects.create(
             session=chat_session,
@@ -176,7 +188,6 @@ def get_ai_response(self, user_prompt, core_prompt, history_dicts, session_id, u
     except ObjectDoesNotExist:
         return "Chat session not found."
     except Exception as e:
-        # Changed the logging style back to the original for consistency but keep the retry
         print(f"An unexpected error occurred in AI agent task: {e}. Retrying in 60s.")
         raise self.retry(exc=e, countdown=60)
 
