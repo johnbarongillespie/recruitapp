@@ -39,7 +39,7 @@ def index(request, session_id=None):
                     # Create a welcome session with the welcome message
                     welcome_session = ChatSession.objects.create(
                         user=request.user,
-                        title="Welcome to RecruitTalk"
+                        title="Welcome to RecruitApp"
                     )
 
                     # Get the welcome message from PromptComponent
@@ -77,7 +77,17 @@ def index(request, session_id=None):
             return redirect('view_session', session_id=latest_session.id)
 
     logger.info(f"User '{request.user.username}' loaded the agent page for session '{session_id}'.")
-    return render(request, 'recruiting/index.html')
+
+    # Get SportProfile for profile panel
+    sport_profile = None
+    try:
+        sport_profile = SportProfile.objects.select_related('sport').filter(user=request.user).first()
+    except SportProfile.DoesNotExist:
+        pass
+
+    return render(request, 'recruiting/agent_redesign.html', {
+        'sport_profile': sport_profile
+    })
 
 
 @login_required
@@ -361,7 +371,7 @@ def register(request):
             verification_link = request.build_absolute_uri(
                 reverse('verify_email', kwargs={'uidb64': uid, 'token': token})
             )
-            subject = 'Activate Your RecruitTalk Agent Account'
+            subject = 'Activate Your RecruitApp Account'
             message = f'Hello {user.username},\n\nPlease click the link below to verify your email and activate your account:\n\n{verification_link}\n\nThank you.'
             send_mail(subject, message, 'from@example.com', [user.email])
             return HttpResponse("Verification email sent. Please check your email (and the console) to complete registration.")

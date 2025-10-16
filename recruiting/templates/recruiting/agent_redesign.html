@@ -1,0 +1,483 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RecruitApp Agent</title>
+
+    <!-- Markdown parsing and sanitization libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+
+    <!-- NEW REDESIGN CSS -->
+    <link rel="stylesheet" href="{% static 'recruiting/css/redesign.css' %}">
+</head>
+<body>
+    <!-- TOP NAVIGATION BAR -->
+    <nav class="ra-topnav">
+        <div class="ra-topnav-left">
+            <a href="/" class="ra-logo">
+                <span class="ra-logo-icon">🎯</span>
+                <span class="ra-logo-text">RecruitApp</span>
+            </a>
+        </div>
+
+        <div class="ra-topnav-center">
+            <button class="ra-nav-btn" data-panel="ledger">
+                <span class="ra-nav-icon">📖</span>
+                <span class="ra-nav-label">Ledger</span>
+            </button>
+            <button class="ra-nav-btn" data-panel="actions">
+                <span class="ra-nav-icon">✅</span>
+                <span class="ra-nav-label">Actions</span>
+            </button>
+            <button class="ra-nav-btn" data-panel="profile">
+                <span class="ra-nav-icon">👤</span>
+                <span class="ra-nav-label">Profile</span>
+            </button>
+        </div>
+
+        <div class="ra-topnav-right">
+            <button class="ra-theme-toggle" aria-label="Toggle dark mode">
+                <span class="ra-theme-icon light-icon">☀️</span>
+                <span class="ra-theme-icon dark-icon">🌙</span>
+            </button>
+            <div class="ra-user-menu">
+                <div class="ra-avatar" style="background: var(--ra-navy); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700;">
+                    {{ user.username.0|upper }}
+                </div>
+                <span class="ra-username">{{ user.username }}</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- CHAT INTERFACE (CENTER STAGE) -->
+    <main class="ra-chat-container">
+        <div class="ra-chat-header">
+            <select class="ra-session-selector" id="session-selector">
+                <option value="new">➕ New Conversation</option>
+            </select>
+        </div>
+
+        <div class="ra-chat-messages" id="message-list">
+            <!-- Messages will be dynamically inserted here -->
+        </div>
+
+        <div class="ra-chat-input">
+            <form id="prompt-form" style="display: flex; width: 100%; gap: var(--ra-space-3);">
+                {% csrf_token %}
+                <textarea
+                    class="ra-input-field"
+                    name="prompt"
+                    rows="1"
+                    placeholder="Ask Coach Alex anything..."
+                    required
+                ></textarea>
+                <button type="submit" class="ra-send-btn" id="send-btn">
+                    <span class="ra-send-icon">→</span>
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <!-- SLIDING PANEL: LEDGER (LEFT) -->
+    <aside class="ra-panel ra-panel-ledger">
+        <div class="ra-panel-header">
+            <div class="ra-panel-title">
+                <span>📖</span> My Ledger
+            </div>
+            <button class="ra-panel-close" aria-label="Close panel">×</button>
+        </div>
+        <div class="ra-panel-content" id="ledger-content">
+            <p style="color: var(--ra-text-secondary);">Loading...</p>
+        </div>
+    </aside>
+
+    <!-- SLIDING PANEL: ACTIONS (RIGHT) -->
+    <aside class="ra-panel ra-panel-actions">
+        <div class="ra-panel-header">
+            <div class="ra-panel-title">
+                <span>✅</span> Action Items
+            </div>
+            <button class="ra-panel-close" aria-label="Close panel">×</button>
+        </div>
+        <div class="ra-panel-content" id="actions-content">
+            <h3 style="color: var(--ra-gold); margin-bottom: var(--ra-space-4);">Active Tasks</h3>
+            <div id="active-actions-container">
+                <p style="color: var(--ra-text-secondary);">Loading...</p>
+            </div>
+            <h3 style="color: var(--ra-text-muted); margin: var(--ra-space-6) 0 var(--ra-space-4);">Completed</h3>
+            <div id="completed-actions-container"></div>
+        </div>
+    </aside>
+
+    <!-- SLIDING PANEL: PROFILE (BOTTOM) -->
+    <aside class="ra-panel ra-panel-profile">
+        <div class="ra-panel-header">
+            <div class="ra-panel-title">
+                <span>👤</span> Your Profile
+            </div>
+            <button class="ra-panel-close" aria-label="Close panel">×</button>
+        </div>
+        <div class="ra-panel-content" id="profile-content">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--ra-space-6);">
+                <div>
+                    <label style="display: block; font-weight: var(--ra-weight-semibold); margin-bottom: var(--ra-space-2);">Name</label>
+                    <p style="color: var(--ra-text-secondary);">{{ user.get_full_name|default:user.username }}</p>
+                </div>
+                {% if sport_profile %}
+                <div>
+                    <label style="display: block; font-weight: var(--ra-weight-semibold); margin-bottom: var(--ra-space-2);">Sport</label>
+                    <p style="color: var(--ra-text-secondary);">{{ sport_profile.sport.name }}</p>
+                </div>
+                <div>
+                    <label style="display: block; font-weight: var(--ra-weight-semibold); margin-bottom: var(--ra-space-2);">Position</label>
+                    <p style="color: var(--ra-text-secondary);">{{ sport_profile.position }}</p>
+                </div>
+                <div>
+                    <label style="display: block; font-weight: var(--ra-weight-semibold); margin-bottom: var(--ra-space-2);">Grad Year</label>
+                    <p style="color: var(--ra-text-secondary);">{{ sport_profile.graduation_year }}</p>
+                </div>
+                {% else %}
+                <div style="grid-column: 1 / -1;">
+                    <p style="color: var(--ra-text-muted);">Complete your profile for personalized recruiting advice.</p>
+                </div>
+                {% endif %}
+            </div>
+            <div style="margin-top: var(--ra-space-8); padding-top: var(--ra-space-6); border-top: 1px solid var(--ra-border);">
+                <a href="{% url 'account_logout' %}" class="ra-btn ra-btn-secondary">Logout</a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- BACKDROP -->
+    <div class="ra-panel-backdrop"></div>
+
+    <!-- LOAD REDESIGN JAVASCRIPT -->
+    <script src="{% static 'recruiting/js/redesign.js' %}"></script>
+
+    <!-- LEGACY CHAT JAVASCRIPT (adapted) -->
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let currentSessionId = null;
+        let loaderElement = null;
+
+        const form = document.getElementById('prompt-form');
+        const messageList = document.getElementById('message-list');
+        const textarea = form.querySelector('textarea');
+        const sendButton = document.getElementById('send-btn');
+        const csrfToken = document.querySelector('input[name=csrfmiddlewaretoken]');
+        const sessionSelector = document.getElementById('session-selector');
+
+        // Load chat history
+        async function loadChatHistory() {
+            try {
+                const response = await fetch('/sessions/');
+                if (!response.ok) throw new Error('Failed to load sessions');
+                const data = await response.json();
+
+                // Update session selector
+                const existingOptions = sessionSelector.querySelectorAll('option:not([value="new"])');
+                existingOptions.forEach(opt => opt.remove());
+
+                data.sessions.forEach(session => {
+                    const option = document.createElement('option');
+                    option.value = session.id;
+                    option.textContent = session.title;
+                    sessionSelector.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Could not load chat history:", error);
+            }
+        }
+
+        // Session selector change
+        sessionSelector.addEventListener('change', (e) => {
+            const sessionId = e.target.value;
+            if (sessionId === 'new') {
+                currentSessionId = null;
+                clearMessages();
+                addMessage("I'm Coach Alex, your personal AI recruiting strategist. What can I help you with today?", 'agent');
+            } else {
+                loadConversation(sessionId);
+            }
+        });
+
+        // Load specific conversation
+        async function loadConversation(sessionId) {
+            currentSessionId = sessionId;
+            clearMessages();
+
+            try {
+                const response = await fetch(`/agent/session/${sessionId}/history/`);
+                if (!response.ok) throw new Error('Failed to load conversation');
+                const data = await response.json();
+
+                data.history.forEach(message => {
+                    const type = message.type === 'model' ? 'agent' : message.type;
+                    addMessage(message.text, type);
+                });
+            } catch (error) {
+                console.error('Error loading conversation:', error);
+                addMessage('Could not load conversation history.', 'agent');
+            }
+        }
+
+        // Clear messages
+        function clearMessages() {
+            messageList.innerHTML = '';
+        }
+
+        // Add message to chat
+        function addMessage(text, type) {
+            const isAgent = type === 'agent';
+            const messageDiv = document.createElement('div');
+            messageDiv.className = isAgent ? 'ra-message ra-message-agent' : 'ra-message ra-message-user';
+
+            if (isAgent) {
+                // Agent message with avatar
+                const avatar = document.createElement('div');
+                avatar.className = 'ra-message-avatar';
+                avatar.innerHTML = '<div style="width: 100%; height: 100%; background: var(--ra-gold); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; border-radius: 50%;">CA</div>';
+
+                const content = document.createElement('div');
+                content.className = 'ra-message-content';
+
+                const name = document.createElement('div');
+                name.className = 'ra-message-name';
+                name.textContent = 'Coach Alex';
+
+                const bubble = document.createElement('div');
+                bubble.className = 'ra-message-bubble';
+
+                // Parse markdown for agent messages
+                if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+                    try {
+                        const rawHtml = marked.parse(text);
+                        bubble.innerHTML = DOMPurify.sanitize(rawHtml);
+                    } catch (error) {
+                        bubble.textContent = text;
+                    }
+                } else {
+                    bubble.textContent = text;
+                }
+
+                content.appendChild(name);
+                content.appendChild(bubble);
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(content);
+            } else {
+                // User message
+                const bubble = document.createElement('div');
+                bubble.className = 'ra-message-bubble';
+                bubble.textContent = text;
+                messageDiv.appendChild(bubble);
+            }
+
+            messageList.appendChild(messageDiv);
+            messageList.scrollTop = messageList.scrollHeight;
+        }
+
+        // Show typing indicator
+        function showTyping() {
+            if (document.querySelector('.ra-typing-indicator')) return;
+
+            const typing = document.createElement('div');
+            typing.className = 'ra-typing-indicator';
+            typing.innerHTML = `
+                <div class="ra-typing-avatar">
+                    <div style="width: 100%; height: 100%; background: var(--ra-gold); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; border-radius: 50%;">CA</div>
+                </div>
+                <div class="ra-typing-dots">
+                    <span></span><span></span><span></span>
+                </div>
+            `;
+            messageList.appendChild(typing);
+            messageList.scrollTop = messageList.scrollHeight;
+        }
+
+        // Hide typing indicator
+        function hideTyping() {
+            const typing = document.querySelector('.ra-typing-indicator');
+            if (typing) typing.remove();
+        }
+
+        // Poll task status
+        function pollTaskStatus(taskId) {
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/agent/task_status/${taskId}/`);
+                    if (!response.ok) throw new Error('Task status check failed');
+                    const data = await response.json();
+
+                    if (data.status === 'SUCCESS' || data.status === 'FAILURE') {
+                        clearInterval(interval);
+                        hideTyping();
+                        if (data.status === 'SUCCESS') {
+                            loadConversation(currentSessionId);
+                            loadChatHistory();
+                        } else {
+                            addMessage('Sorry, an error occurred while processing your request.', 'agent');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Polling error:', error);
+                    hideTyping();
+                    clearInterval(interval);
+                }
+            }, 3000);
+        }
+
+        // Form submit
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const prompt = textarea.value.trim();
+            if (!prompt) return;
+
+            addMessage(prompt, 'user');
+            textarea.value = '';
+            textarea.style.height = 'auto';
+
+            sendButton.disabled = true;
+            showTyping();
+
+            try {
+                const response = await fetch('/agent/ask/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken.value
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        session_id: currentSessionId
+                    })
+                });
+
+                if (!response.ok) throw new Error('Request failed');
+                const data = await response.json();
+
+                if (data.task_id) {
+                    currentSessionId = data.session_id;
+                    pollTaskStatus(data.task_id);
+                } else {
+                    throw new Error('No task ID received');
+                }
+            } catch (error) {
+                console.error('Submit error:', error);
+                hideTyping();
+                sendButton.disabled = false;
+                addMessage('Sorry, a network error occurred.', 'agent');
+            }
+        });
+
+        // Load Ledger data
+        async function loadLedger() {
+            try {
+                const response = await fetch('/ledger/');
+                if (!response.ok) throw new Error('Failed to load ledger');
+                const data = await response.json();
+
+                const ledgerContent = document.getElementById('ledger-content');
+                if (data.ledger_entries.length === 0) {
+                    ledgerContent.innerHTML = '<p style="color: var(--ra-text-muted);">No saved insights yet. Save important advice from Coach Alex to build your recruiting playbook.</p>';
+                } else {
+                    ledgerContent.innerHTML = data.ledger_entries.map(entry => `
+                        <div class="ra-ledger-item" style="padding: var(--ra-space-4); background: var(--ra-bg-secondary); border-radius: var(--ra-radius-md); margin-bottom: var(--ra-space-3);">
+                            <h4 style="margin: 0 0 var(--ra-space-2); color: var(--ra-gold); font-weight: var(--ra-weight-semibold);">${entry.title}</h4>
+                            <p style="margin: 0; color: var(--ra-text-secondary); font-size: var(--ra-text-sm);">${entry.content.substring(0, 200)}${entry.content.length > 200 ? '...' : ''}</p>
+                            <div style="margin-top: var(--ra-space-2); font-size: var(--ra-text-xs); color: var(--ra-text-muted);">${new Date(entry.created_at).toLocaleDateString()}</div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading ledger:', error);
+                document.getElementById('ledger-content').innerHTML = '<p style="color: var(--ra-text-muted);">Failed to load ledger entries.</p>';
+            }
+        }
+
+        // Load Action Items data
+        async function loadActionItems() {
+            try {
+                const response = await fetch('/action-items/');
+                if (!response.ok) throw new Error('Failed to load action items');
+                const data = await response.json();
+
+                const activeContainer = document.getElementById('active-actions-container');
+                const completedContainer = document.getElementById('completed-actions-container');
+
+                if (data.active_items.length === 0) {
+                    activeContainer.innerHTML = '<p style="color: var(--ra-text-muted);">No active tasks. Your action items will appear here.</p>';
+                } else {
+                    activeContainer.innerHTML = data.active_items.map(item => `
+                        <div class="ra-action-item" style="padding: var(--ra-space-4); background: var(--ra-bg-secondary); border-radius: var(--ra-radius-md); margin-bottom: var(--ra-space-3); border-left: 3px solid var(--ra-gold);">
+                            <div style="display: flex; align-items: start; gap: var(--ra-space-3);">
+                                <input type="checkbox" onclick="toggleActionItem('${item.id}')" style="margin-top: 4px;">
+                                <div style="flex: 1;">
+                                    <p style="margin: 0; color: var(--ra-text-primary); font-weight: var(--ra-weight-medium);">${item.description}</p>
+                                    ${item.due_date ? `<div style="margin-top: var(--ra-space-2); font-size: var(--ra-text-xs); color: var(--ra-text-muted);">Due: ${new Date(item.due_date).toLocaleDateString()}</div>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+
+                if (data.completed_items.length === 0) {
+                    completedContainer.innerHTML = '';
+                } else {
+                    completedContainer.innerHTML = data.completed_items.map(item => `
+                        <div class="ra-action-item" style="padding: var(--ra-space-3); background: var(--ra-bg-secondary); border-radius: var(--ra-radius-md); margin-bottom: var(--ra-space-2); opacity: 0.6;">
+                            <div style="display: flex; align-items: start; gap: var(--ra-space-3);">
+                                <input type="checkbox" checked onclick="toggleActionItem('${item.id}')" style="margin-top: 4px;">
+                                <p style="margin: 0; color: var(--ra-text-secondary); text-decoration: line-through; font-size: var(--ra-text-sm);">${item.description}</p>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading action items:', error);
+                document.getElementById('active-actions-container').innerHTML = '<p style="color: var(--ra-text-muted);">Failed to load action items.</p>';
+            }
+        }
+
+        // Toggle action item completion
+        async function toggleActionItem(itemId) {
+            try {
+                const response = await fetch(`/action-items/${itemId}/toggle/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken.value
+                    }
+                });
+                if (response.ok) {
+                    loadActionItems();
+                }
+            } catch (error) {
+                console.error('Error toggling action item:', error);
+            }
+        }
+
+        // Make toggleActionItem globally accessible
+        window.toggleActionItem = toggleActionItem;
+
+        // Load panels when they're opened
+        document.querySelectorAll('[data-panel]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const panelName = btn.getAttribute('data-panel');
+                if (panelName === 'ledger') {
+                    loadLedger();
+                } else if (panelName === 'actions') {
+                    loadActionItems();
+                }
+            });
+        });
+
+        // Initialize
+        loadChatHistory();
+        addMessage("Welcome to RecruitApp! I'm Coach Alex, your AI recruiting strategist. How can I help you today?", 'agent');
+    });
+    </script>
+</body>
+</html>
