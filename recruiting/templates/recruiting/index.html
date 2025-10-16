@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RecruitTalk Agent</title>
+    <title>RecruitApp Agent</title>
     
     <!-- Markdown parsing and sanitization libraries -->
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
@@ -18,24 +18,77 @@
 </head>
 <body>
     <div class="app-wrapper">
+        <div class="chat-container">
+            <div class="chat-header">
+                <div class="header-left">
+                    <h1>{{ user.username }}'s Recruiting Strategy</h1>
+                    <div class="profile-data-snapshot">
+                        {% if sport_profile %}
+                            Sport: {{ sport_profile.sport.name }} | Pos: {{ sport_profile.position }} | Grad Year: {{ sport_profile.graduation_year }}
+                        {% else %}
+                            Update profile for personalized advice
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="header-right">
+                    <span id="chat-counter" style="display: none; color: var(--color-text-secondary); font-weight: 300;">0 of 3 Used</span>
+                </div>
+            </div>
+            
+            <div id="chat-view" class="main-view">
+                <div id="message-list">
+                </div>
+                <div class="prompt-form-wrapper">
+                    <form id="prompt-form" class="prompt-form">
+                        {% csrf_token %}
+                        <textarea name="prompt" rows="1" placeholder="Ask Coach Alex for advice..." required></textarea>
+                        <button type="submit" id="send-btn" title="Send (Enter)">&uarr;</button>
+                    </form>
+                </div>
+            </div>
+            
+            <div id="ledger-view" class="main-view">
+                <div class="content-scroller">
+                    <h2 class="view-title">The Ledger (Personalized Insights)</h2>
+                    <div id="ledger-entries-container"></div>
+                </div>
+            </div>
+            
+            <div id="actions-view" class="main-view">
+                <div class="content-scroller">
+                    <h2 class="view-title">Action Items (Roadmap)</h2>
+                    <h3 style="color: var(--color-accent); margin-bottom: 15px;">Active Tasks</h3>
+                    <div id="active-actions-container"></div>
+                    <h3 style="color: var(--color-text-secondary); margin-bottom: 15px;">Completed Tasks</h3>
+                    <div id="completed-actions-container"></div>
+                </div>
+            </div>
+        </div>
+
         <div id="sidebar">
-            <h2>RecruitTalk AI</h2>
-            
-            <button id="new-chat-btn">
-                + Start New Session
-            </button>
-            
+            <h2 style="text-align: center; margin-bottom: 30px;">RecruitApp</h2>
+
             <nav id="global-nav">
-                <a href="#" id="nav-chat" class="nav-link">
-                    <span>💬</span> Conversation
+                <a href="#" id="nav-chat" class="nav-link" title="Your Personal AI Recruiting Coach">
+                    Coach Alex
                 </a>
-                <a href="#" id="nav-ledger" class="nav-link">
-                    <span>📖</span> The Ledger
+                <a href="#" id="nav-ledger" class="nav-link" title="All of your saved insights and earned knowledge gets stored here">
+                    The Ledger
                 </a>
-                <a href="#" id="nav-actions" class="nav-link">
-                    <span>✅</span> Action Items
+                <a href="#" id="nav-actions" class="nav-link" title="Coach Alex reviews your items in The Ledger and turns your saved insights into a plan of action">
+                    Game Plan
                 </a>
             </nav>
+
+            <h3 style="font-size: 1.12rem; color: var(--color-text-main); text-align: center; margin: 25px 0 15px 0; font-weight: 600; font-family: var(--font-stack);">Chat History</h3>
+
+            <button id="new-chat-btn">
+                + Start New Chat
+            </button>
+
+            <div style="text-align: center; padding: 5px 0 10px 0; color: var(--color-text-secondary); font-size: 0.85rem;">
+                <span id="chat-counter-sidebar">0 of 3 Chats in Use</span>
+            </div>
 
             <ul id="session-list"></ul>
 
@@ -73,57 +126,28 @@
                     font-size: 0.7rem;
                     color: #ff6666;
                     margin-top: 5px;
+                    margin-bottom: 15px;
                     text-align: center;
                     font-weight: 600;
                 ">DEV ONLY - DESTRUCTIVE</p>
             </div>
-        </div>
-        
-        <div class="chat-container">
-            <div class="chat-header">
-                <div class="header-left">
-                    <h1>{{ user.username }}'s Recruiting Strategy</h1>
-                    <div class="profile-data-snapshot">
-                        {% if sport_profile %}
-                            Sport: {{ sport_profile.sport.name }} | Pos: {{ sport_profile.position }} | Grad Year: {{ sport_profile.graduation_year }}
-                        {% else %}
-                            Update profile for personalized advice
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="header-right">
-                    <span id="chat-counter" style="color: var(--color-text-secondary); font-weight: 300;">0 of 3 Used</span>
-                    <a href="{% url 'account_logout' %}" class="logout-btn">Logout</a>
-                </div>
-            </div>
-            
-            <div id="chat-view" class="main-view">
-                <div id="message-list">
-                </div>
-                <div class="prompt-form-wrapper">
-                    <form id="prompt-form" class="prompt-form">
-                        {% csrf_token %}
-                        <textarea name="prompt" rows="1" placeholder="Ask Coach Alex for advice..." required></textarea>
-                        <button type="submit" id="send-btn" title="Send (Enter)">&uarr;</button>
-                    </form>
-                </div>
-            </div>
-            
-            <div id="ledger-view" class="main-view">
-                <div class="content-scroller">
-                    <h2 class="view-title">The Ledger (Personalized Insights)</h2>
-                    <div id="ledger-entries-container"></div>
-                </div>
-            </div>
-            
-            <div id="actions-view" class="main-view">
-                <div class="content-scroller">
-                    <h2 class="view-title">Action Items (Roadmap)</h2>
-                    <h3 style="color: var(--color-accent); margin-bottom: 15px;">Active Tasks</h3>
-                    <div id="active-actions-container"></div>
-                    <h3 style="color: var(--color-text-secondary); margin-bottom: 15px;">Completed Tasks</h3>
-                    <div id="completed-actions-container"></div>
-                </div>
+
+            <!-- LOGOUT BUTTON -->
+            <div style="padding: 0 15px 15px 15px;">
+                <a href="{% url 'account_logout' %}" class="logout-btn" style="
+                    display: block;
+                    width: 100%;
+                    text-align: center;
+                    padding: 10px;
+                    background-color: var(--color-border);
+                    color: var(--color-text-main);
+                    text-decoration: none;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    transition: all 0.2s;
+                ">
+                    Logout
+                </a>
             </div>
         </div>
     </div>
@@ -198,6 +222,7 @@
         const csrfToken = document.querySelector('input[name=csrfmiddlewaretoken]');
         const sessionList = document.getElementById('session-list');
         const chatCounter = document.getElementById('chat-counter');
+        const chatCounterSidebar = document.getElementById('chat-counter-sidebar');
         const deleteModal = document.getElementById('delete-modal');
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
         const deletableSessionsList = document.getElementById('deletable-sessions-list');
@@ -338,7 +363,10 @@
                 
                 currentSessions = data.sessions;
                 sessionCount = currentSessions.length;
-                chatCounter.textContent = `${sessionCount} of ${CHAT_LIMIT} Used`;
+                chatCounter.textContent = `${sessionCount} of ${CHAT_LIMIT} Chats in Use`;
+                if (chatCounterSidebar) {
+                    chatCounterSidebar.textContent = `${sessionCount} of ${CHAT_LIMIT} Chats in Use`;
+                }
 
                 sessionList.innerHTML = '';
                 currentSessions.forEach(session => {

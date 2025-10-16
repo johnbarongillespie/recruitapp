@@ -77,17 +77,7 @@ def index(request, session_id=None):
             return redirect('view_session', session_id=latest_session.id)
 
     logger.info(f"User '{request.user.username}' loaded the agent page for session '{session_id}'.")
-
-    # Get SportProfile for profile panel
-    sport_profile = None
-    try:
-        sport_profile = SportProfile.objects.select_related('sport').filter(user=request.user).first()
-    except SportProfile.DoesNotExist:
-        pass
-
-    return render(request, 'recruiting/agent_redesign.html', {
-        'sport_profile': sport_profile
-    })
+    return render(request, 'recruiting/index.html')
 
 
 @login_required
