@@ -13,5 +13,26 @@ urlpatterns = [
     path('sessions/', views.get_chat_sessions, name='get_chat_sessions'),
     path('agent/session/<uuid:session_id>/delete/', views.delete_session, name='delete_session'),
     path('agent/session/<uuid:session_id>/history/', views.get_session_history, name='get_session_history'),
+    
+    # --- START NEW URLS FOR SPRINT 1 ---
+    
+    # Ledger Routes (Milestone 2)
+    path('ledger/', views.ledger_list, name='ledger_list'),
+    path('ledger/save/', views.save_to_ledger, name='save_to_ledger'),
+    path('ledger/<int:entry_id>/delete/', views.delete_ledger_entry, name='delete_ledger_entry'),
+    
+    # Action Item Routes (Milestone 3)
+    path('action-items/', views.action_items_list, name='action_items_list'),
+    path('action-items/generate/', views.generate_action_items, name='generate_action_items'),
+    path('action-items/<int:item_id>/toggle/', views.toggle_action_item_complete, name='toggle_action_item_complete'),
+
+    # --- END NEW URLS ---
+
+    # ADMIN ROUTES (Milestone 3)
+    path('admin/toggle-untethered/', views.toggle_untethered_mode, name='toggle_untethered_mode'),
+
+    # DEVELOPMENT/TESTING ONLY (REMOVE BEFORE PRODUCTION)
+    path('dev/reset-my-data/', views.reset_my_data, name='reset_my_data'),
+
     path('accounts/', include('allauth.urls')),
 ]

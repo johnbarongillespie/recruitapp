@@ -1,9 +1,9 @@
 import os
 from dotenv import load_dotenv
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponse
 import json
-from .models import PromptComponent, Conversation, UserProfile, ChatSession, SportProfile, Sport 
+from .models import PromptComponent, Conversation, UserProfile, ChatSession, SportProfile, Sport, LedgerEntry, ActionItem, AdminSettings 
 from .forms import CustomUserCreationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -14,8 +14,8 @@ from django.core.mail import send_mail
 from django.urls import reverse
 import logging
 from celery.result import AsyncResult
-from .tasks import get_ai_response, generate_title_and_summary
-from datetime import datetime # <-- ADDED THIS IMPORT
+from .tasks import get_ai_response, generate_title_and_summary, generate_action_items_task # <-- IMPORT NEW TASK
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -29,16 +29,60 @@ def landing_page(request):
 @login_required
 def index(request, session_id=None):
     if session_id is None:
+        # Check if this is a first-time user who needs a welcome message
+        try:
+            user_profile = request.user.userprofile
+            if not user_profile.has_seen_welcome:
+                # Check if user has NO chat sessions at all (truly first time)
+                session_count = ChatSession.objects.filter(user=request.user).count()
+                if session_count == 0:
+                    # Create a welcome session with the welcome message
+                    welcome_session = ChatSession.objects.create(
+                        user=request.user,
+                        title="Welcome to RecruitTalk"
+                    )
+
+                    # Get the welcome message from PromptComponent
+                    try:
+                        welcome_component = PromptComponent.objects.get(name='welcome_message')
+                        welcome_text = welcome_component.content.format(
+                            username=request.user.first_name or request.user.username
+                        )
+
+                        # Create a Conversation with the welcome message as agent's response
+                        Conversation.objects.create(
+                            session=welcome_session,
+                            user=request.user,
+                            prompt_text="",  # No user prompt for welcome message
+                            response_text=welcome_text
+                        )
+
+                        # Mark that user has seen welcome
+                        user_profile.has_seen_welcome = True
+                        user_profile.save(update_fields=['has_seen_welcome'])
+
+                        logger.info(f"Created welcome session for first-time user '{request.user.username}'")
+
+                        # Redirect to the new welcome session
+                        return redirect('view_session', session_id=welcome_session.id)
+
+                    except PromptComponent.DoesNotExist:
+                        logger.warning("Welcome message component not found, skipping welcome session creation")
+        except UserProfile.DoesNotExist:
+            logger.warning(f"UserProfile not found for user {request.user.username}")
+
+        # Normal flow: redirect to latest session if exists
         latest_session = ChatSession.objects.filter(user=request.user).order_by('-updated_at').first()
         if latest_session:
             return redirect('view_session', session_id=latest_session.id)
-    
+
     logger.info(f"User '{request.user.username}' loaded the agent page for session '{session_id}'.")
     return render(request, 'recruiting/index.html')
 
 
 @login_required
 def ask_agent(request):
+# ... (ask_agent view remains unchanged)
     if request.method == 'POST':
         data = json.loads(request.body)
         user_prompt = data.get('prompt')
@@ -97,12 +141,12 @@ def ask_agent(request):
         for conv in recent_conversations:
             history_dicts.append({"role": "user", "parts": [{"text": conv.prompt_text}]})
             history_dicts.append({"role": "model", "parts": [{"text": conv.response_text}]})
-        
+
         task = get_ai_response.delay(
-            user_prompt, 
-            core_prompt, 
-            history_dicts, 
-            str(session_id), 
+            user_prompt,
+            core_prompt,
+            history_dicts,
+            str(session_id),
             request.user.id
         )
         
@@ -112,6 +156,7 @@ def ask_agent(request):
 
 @login_required
 def get_task_status(request, task_id):
+# ... (get_task_status view remains unchanged)
     task_result = AsyncResult(task_id)
     result = {
         "task_id": task_id,
@@ -132,6 +177,7 @@ def get_task_status(request, task_id):
     
     return JsonResponse(result)
 
+# ... (get_chat_sessions, get_session_history, delete_session views remain unchanged)
 @login_required
 def get_chat_sessions(request):
     sessions = ChatSession.objects.filter(user=request.user).order_by('-updated_at')
@@ -145,13 +191,18 @@ def get_chat_sessions(request):
 def get_session_history(request, session_id):
     try:
         session = ChatSession.objects.get(id=session_id, user=request.user)
+        # MODIFIED: Include 'id' in the values() call
         messages = session.messages.order_by('timestamp').values(
-            'prompt_text', 'response_text', 'timestamp'
+            'id', 'prompt_text', 'response_text', 'timestamp'
         )
         history = []
         for msg in messages:
-            history.append({'type': 'user', 'text': msg['prompt_text'], 'timestamp': msg['timestamp']})
-            history.append({'type': 'model', 'text': msg['response_text'], 'timestamp': msg['timestamp']})
+            # User message has no ID reference needed by the Ledger
+            history.append({'type': 'user', 'text': msg['prompt_text'], 'timestamp': msg['timestamp'], 'id': None}) 
+            
+            # Agent message requires the Conversation ID ('id' field) for Ledger functionality
+            history.append({'type': 'model', 'text': msg['response_text'], 'timestamp': msg['timestamp'], 'id': str(msg['id'])}) 
+        
         return JsonResponse({'history': history})
     except ChatSession.DoesNotExist:
         return JsonResponse({'error': 'Session not found or access denied.'}, status=404)
@@ -173,8 +224,131 @@ def delete_session(request, session_id):
             return JsonResponse({'status': 'error', 'message': 'An internal error occurred.'}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 
+
+# ------------------------------------
+# --- NEW VIEWS FOR LEDGER (Milestone 2) ---
+# ------------------------------------
+
+@login_required
+def ledger_list(request):
+    """API endpoint to get a list of all Ledger entries for the user."""
+    entries = LedgerEntry.objects.filter(user=request.user).order_by('-created_at').values(
+        'id', 'title', 'content', 'created_at', 'conversation_id'
+    )
+    # Return as JSON for front-end rendering
+    return JsonResponse({'ledger_entries': list(entries)})
+
+@login_required
+def save_to_ledger(request):
+    """API endpoint to save a piece of advice to the Ledger."""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            # The client must send the ID of the specific Conversation message
+            conversation_id = data.get('conversation_id')
+            title = data.get('title') # User-provided title for elegance
+            content = data.get('content') # Agent's response text
+
+            if not title or not content:
+                return JsonResponse({'status': 'error', 'message': 'Title and content are required.'}, status=400)
+            
+            conversation = None
+            if conversation_id:
+                # Ensure the conversation belongs to the user
+                conversation = get_object_or_404(Conversation, pk=conversation_id, user_id=request.user.id)
+
+            LedgerEntry.objects.create(
+                user=request.user,
+                conversation=conversation,
+                title=title,
+                content=content
+            )
+            
+            return JsonResponse({'status': 'success', 'message': 'Insight successfully saved to Ledger.'})
+            
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON format.'}, status=400)
+        except Exception as e:
+            logger.error(f"Error saving to ledger: {e}")
+            return JsonResponse({'status': 'error', 'message': 'An internal error occurred.'}, status=500)
+    
+    return JsonResponse({'status': 'error', 'message': 'Only POST requests allowed.'}, status=405)
+
+@login_required
+def delete_ledger_entry(request, entry_id):
+    """API endpoint to delete a Ledger entry."""
+    entry = get_object_or_404(LedgerEntry, pk=entry_id, user=request.user)
+    if request.method == 'POST':
+        entry.delete()
+        return JsonResponse({'status': 'success', 'message': 'Ledger entry deleted.'})
+    return JsonResponse({'status': 'error', 'message': 'Only POST requests allowed.'}, status=405)
+
+
+# ------------------------------------
+# --- NEW VIEWS FOR ACTION ITEMS (Milestone 3) ---
+# ------------------------------------
+
+@login_required
+def action_items_list(request):
+    """API endpoint to get the list of active and completed Action Items."""
+    items = ActionItem.objects.filter(user=request.user).order_by('-created_at').values(
+        'id', 'description', 'is_complete', 'priority', 'due_date', 'created_at', 'source_ledger_entry_id'
+    )
+    # Split into active and completed for front-end categorization
+    active_items = [item for item in items if not item['is_complete']]
+    completed_items = [item for item in items if item['is_complete']]
+    
+    return JsonResponse({
+        'active_items': active_items,
+        'completed_items': completed_items
+    })
+
+
+@login_required
+def generate_action_items(request):
+    """
+    API endpoint to trigger the AI analysis of a specific Ledger entry to generate Action Items.
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            ledger_entry_id = data.get('ledger_entry_id')
+            
+            if not ledger_entry_id:
+                return JsonResponse({'status': 'error', 'message': 'ledger_entry_id is required.'}, status=400)
+
+            # Retrieve the specific Ledger Entry
+            ledger_entry = get_object_or_404(LedgerEntry, pk=ledger_entry_id, user=request.user)
+
+            # Trigger the Celery task
+            task = generate_action_items_task.delay(
+                request.user.id, 
+                ledger_entry.id,
+                ledger_entry.content
+            )
+            
+            return JsonResponse({'status': 'success', 'message': 'Action Item generation task started.', 'task_id': task.id})
+        
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON format.'}, status=400)
+        except Exception as e:
+            logger.error(f"Error triggering action item generation: {e}")
+            return JsonResponse({'status': 'error', 'message': f'An internal error occurred: {e}'}, status=500)
+            
+    return JsonResponse({'status': 'error', 'message': 'Only POST requests allowed.'}, status=405)
+
+@login_required
+def toggle_action_item_complete(request, item_id):
+# ... (toggle_action_item_complete view remains unchanged)
+    item = get_object_or_404(ActionItem, pk=item_id, user=request.user)
+    if request.method == 'POST':
+        item.is_complete = not item.is_complete
+        item.save(update_fields=['is_complete'])
+        return JsonResponse({'status': 'success', 'is_complete': item.is_complete, 'message': 'Action item status updated.'})
+    return JsonResponse({'status': 'error', 'message': 'Only POST requests allowed.'}, status=405)
+
+# ... (register and verify_email remain unchanged)
 def register(request):
-    # ... (code unchanged)
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
@@ -196,7 +370,6 @@ def register(request):
     return render(request, 'registration/register.html', {'form': form})
 
 def verify_email(request, uidb64, token):
-    # ... (code unchanged)
     try:
         uid = force_str(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)
@@ -212,3 +385,106 @@ def verify_email(request, uidb64, token):
         return redirect('login')
     else:
         return HttpResponse('The verification link is invalid.')
+
+
+# ------------------------------------
+# --- DEVELOPMENT/TESTING UTILITY (REMOVE BEFORE PRODUCTION) ---
+# ------------------------------------
+
+@login_required
+def reset_my_data(request):
+    """
+    DEVELOPMENT ONLY: Nuclear reset button to clear all user data for testing.
+    This allows rapid testing of onboarding flows, welcome messages, etc.
+
+    ⚠️ WARNING: This is DESTRUCTIVE and should be REMOVED before production deployment.
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            confirmation = data.get('confirmation', '')
+
+            # Require username confirmation to prevent accidental clicks
+            if confirmation.lower() != request.user.username.lower():
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Confirmation failed. Type your username "{request.user.username}" to confirm.'
+                }, status=400)
+
+            # Delete all user-related data (cascade deletes handle related records)
+            ChatSession.objects.filter(user=request.user).delete()
+            # Conversations are cascade-deleted via ChatSession foreign key
+
+            LedgerEntry.objects.filter(user=request.user).delete()
+            ActionItem.objects.filter(user=request.user).delete()
+            SportProfile.objects.filter(user=request.user).delete()
+
+            # Reset UserProfile flags
+            try:
+                user_profile = request.user.userprofile
+                user_profile.has_seen_welcome = False
+                user_profile.onboarding_complete = False
+                user_profile.save()
+            except UserProfile.DoesNotExist:
+                # Create a fresh UserProfile if it doesn't exist
+                UserProfile.objects.create(user=request.user)
+
+            logger.info(f"User '{request.user.username}' performed a complete data reset.")
+
+            return JsonResponse({
+                'status': 'success',
+                'message': 'All data deleted successfully. You can now test as a fresh user.'
+            })
+
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON format.'}, status=400)
+        except Exception as e:
+            logger.error(f"Error during data reset for user {request.user.username}: {e}")
+            return JsonResponse({'status': 'error', 'message': f'Reset failed: {str(e)}'}, status=500)
+
+    return JsonResponse({'status': 'error', 'message': 'Only POST requests allowed.'}, status=405)
+
+
+# ------------------------------------
+# --- ADMIN FUNCTIONALITY (Milestone 3) ---
+# ------------------------------------
+
+@login_required
+def toggle_untethered_mode(request):
+    """
+    Admin endpoint to toggle untethered mode on/off.
+    Requires user to have AdminSettings.
+    """
+    if request.method == 'POST':
+        try:
+            # Check if user has admin settings
+            try:
+                admin_settings = request.user.admin_settings
+            except AdminSettings.DoesNotExist:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Admin access required.'
+                }, status=403)
+
+            data = json.loads(request.body)
+            enabled = data.get('enabled', False)
+
+            # Update the setting
+            admin_settings.untethered_mode_enabled = enabled
+            admin_settings.save(update_fields=['untethered_mode_enabled'])
+
+            logger.info(f"Admin user '{request.user.username}' {'enabled' if enabled else 'disabled'} untethered mode")
+
+            return JsonResponse({
+                'status': 'success',
+                'message': f"Untethered mode {'enabled' if enabled else 'disabled'}",
+                'untethered_mode_enabled': enabled
+            })
+
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON format.'}, status=400)
+        except Exception as e:
+            logger.error(f"Error toggling untethered mode for user {request.user.username}: {e}")
+            return JsonResponse({'status': 'error', 'message': f'Toggle failed: {str(e)}'}, status=500)
+
+    return JsonResponse({'status': 'error', 'message': 'Only POST requests allowed.'}, status=405)

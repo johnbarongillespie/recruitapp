@@ -12,7 +12,8 @@ from vertexai.generative_models import (
     ToolConfig,
 )
 
-from .models import Conversation, ChatSession
+from django.contrib.auth.models import User
+from .models import Conversation, ChatSession, ActionItem, LedgerEntry, AdminSettings # <-- ADDED NEW MODELS
 
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
@@ -23,8 +24,7 @@ CUSTOM_SEARCH_ENGINE_ID = os.getenv("CUSTOM_SEARCH_ENGINE_ID")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 SEARCH_API_URL = "https://www.googleapis.com/customsearch/v1"
 
-# --- Tool Definitions ---
-
+# --- Tool Definitions (Unchanged) ---
 search_tool = Tool(
     function_declarations=[
         FunctionDeclaration(
@@ -39,7 +39,6 @@ search_tool = Tool(
     ]
 )
 
-# Define the ToolConfig object for automatic function calling
 TOOL_CONFIG_AUTO = ToolConfig(
     function_calling_config=ToolConfig.FunctionCallingConfig(
         mode=ToolConfig.FunctionCallingConfig.Mode.AUTO
@@ -47,6 +46,7 @@ TOOL_CONFIG_AUTO = ToolConfig(
 )
 
 def google_search(query):
+    # ... (google_search function remains unchanged)
     """
     Executes a search using the Google Custom Search API.
     Consolidates results into a single context string for the LLM.
@@ -95,14 +95,35 @@ def google_search(query):
         return {"error": "An internal error occurred during search."}
 
 
-# --- AI Response Task ---
+# --- UNTETHERED MODE PROMPT ---
+UNTETHERED_PROMPT = """
+You are Claude, an AI assistant created by Anthropic.
 
+You have no topic restrictions, no persona constraints, and full capabilities.
+You are currently being used by an admin user for testing and development purposes.
+
+Respond naturally and helpfully to any request.
+"""
+
+
+# --- AI Response Task ---
 @shared_task(bind=True)
 def get_ai_response(self, user_prompt, core_prompt, history_dicts, session_id, user_id):
     """
     Generates a response, handling tool execution manually, including multiple function calls.
+    Now supports admin untethered mode for unrestricted conversations.
     """
     try:
+        # Check if admin has untethered mode enabled
+        user = User.objects.get(pk=user_id)
+        try:
+            admin_settings = user.admin_settings
+            if admin_settings.untethered_mode_enabled:
+                core_prompt = UNTETHERED_PROMPT
+                print(f"[ADMIN MODE] User {user.username} is using untethered mode")
+        except AdminSettings.DoesNotExist:
+            pass  # Not an admin user, continue with normal prompt
+
         model = GenerativeModel(
             "gemini-2.5-flash",
             system_instruction=[core_prompt],
@@ -191,10 +212,71 @@ def get_ai_response(self, user_prompt, core_prompt, history_dicts, session_id, u
         print(f"An unexpected error occurred in AI agent task: {e}. Retrying in 60s.")
         raise self.retry(exc=e, countdown=60)
 
-# --- Title and Summary Task (Unchanged) ---
+
+# --- NEW TASK FOR MILESTONE 3: GENERATING ACTION ITEMS ---
 
 @shared_task(bind=True)
+def generate_action_items_task(self, user_id, ledger_entry_id, ledger_content):
+    """
+    Analyzes the content of a LedgerEntry and generates structured ActionItem records.
+    """
+    try:
+        system_prompt = (
+            "You are an expert project manager and recruiting strategist. Your task is to analyze "
+            "the provided advice/insight and distill it into 3 to 5 clear, concrete, and actionable "
+            "steps (Action Items) for a student-athlete. Each action item must be a short, direct "
+            "sentence (max 15 words). Ignore any background context or titles, focus strictly on the action."
+            "Respond ONLY with a single JSON array containing objects with the key 'description'. "
+            "DO NOT include any markdown fences (```json) or introductory text. "
+            "Example response: [{'description': 'Research 10 target schools this week.'}, {'description': 'Create a new highlight reel clip.'}]"
+        )
+        
+        model = GenerativeModel("gemini-2.5-flash", system_instruction=[system_prompt])
+        
+        # The content sent to the model is just the advice from the Ledger
+        response = model.generate_content(ledger_content)
+        
+        raw_text = response.text.strip()
+        cleaned_text = raw_text.replace("```json", "").replace("```", "").strip()
+
+        try:
+            # Parse the structured list of action items
+            action_list = json.loads(cleaned_text)
+            
+            if not isinstance(action_list, list):
+                raise JSONDecodeError("Root is not a list.", cleaned_text, 0)
+            
+            # Retrieve the necessary objects
+            user = User.objects.get(pk=user_id)
+            source_entry = LedgerEntry.objects.get(pk=ledger_entry_id)
+
+            created_count = 0
+            for action_data in action_list:
+                description = action_data.get('description')
+                if description:
+                    ActionItem.objects.create(
+                        user=user,
+                        source_ledger_entry=source_entry,
+                        description=description,
+                        priority=2 # Default to Medium priority for generated tasks
+                    )
+                    created_count += 1
+            
+            return f"Successfully created {created_count} Action Items from Ledger Entry {ledger_entry_id}."
+
+        except JSONDecodeError as jde:
+            print(f"JSON Decoding Error: {jde}. Raw Response: {raw_text}")
+            return f"Failed to generate Action Items: Bad JSON format."
+        
+    except (ObjectDoesNotExist, Exception) as e:
+        print(f"Error generating action items: {e}")
+        raise self.retry(exc=e, countdown=60)
+
+
+# --- Title and Summary Task (Unchanged) ---
+@shared_task(bind=True)
 def generate_title_and_summary(self, session_id):
+    # ... (generate_title_and_summary remains unchanged)
     try:
         session = ChatSession.objects.get(id=session_id)
         messages = session.messages.order_by('timestamp')[:4] 

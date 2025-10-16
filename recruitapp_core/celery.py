@@ -1,4 +1,5 @@
 import os
+import sys
 from celery import Celery
 from dotenv import load_dotenv
 
@@ -18,6 +19,17 @@ app.conf.task_serializer = 'json'
 app.conf.result_serializer = 'json'
 app.conf.accept_content = ['json']
 app.conf.timezone = 'UTC'
+
+# Windows-specific configuration: Use solo pool (works without gevent dependency issues)
+# For production with concurrency, deploy to Linux or resolve gevent venv installation
+if sys.platform == 'win32':
+    app.conf.worker_pool = 'solo'  # Single-threaded, works reliably on Windows
+
+    # To enable gevent (requires proper venv installation):
+    # pip install --no-user gevent
+    # Then uncomment:
+    # app.conf.worker_pool = 'gevent'
+    # app.conf.worker_concurrency = 10
 
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
