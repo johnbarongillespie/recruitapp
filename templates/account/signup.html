@@ -1,10 +1,12 @@
 {% load static %}
+{% load i18n %}
+{% load allauth account %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RecruitApp - Login</title>
+    <title>RecruitApp - Sign Up</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
@@ -48,19 +50,20 @@
             z-index: 0;
         }
 
-        .login-container {
+        .signup-container {
             position: relative;
             z-index: 1;
             width: 90%;
-            max-width: 450px;
+            max-width: 500px;
             background: rgba(255, 255, 255, 0.98);
             border-radius: 12px;
-            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4),
-                        0 0 0 1px rgba(195, 159, 71, 0.3);
+            outline: 2px solid rgba(0, 0, 0, 0.8);
+            outline-offset: -2px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
             overflow: hidden;
         }
 
-        .login-header {
+        .signup-header {
             background: linear-gradient(135deg, rgba(0, 31, 63, 0.95) 0%, rgba(0, 31, 63, 1) 100%);
             padding: 40px 30px 30px;
             text-align: center;
@@ -79,33 +82,55 @@
                 3px 3px 12px rgba(0, 0, 0, 0.5);
         }
 
-        .login-subtitle {
+        .signup-subtitle {
             font-size: 1.3rem;
             letter-spacing: 0.05em;
             color: rgba(255, 255, 255, 0.9);
             font-weight: 400;
         }
 
-        .login-form {
+        .signup-form {
             padding: 40px 30px;
         }
 
-        .form-group {
+        .login-prompt {
+            background: rgba(195, 159, 71, 0.1);
+            border-left: 3px solid rgb(195, 159, 71);
+            padding: 12px 16px;
             margin-bottom: 25px;
+            border-radius: 4px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 0.95rem;
+            color: rgba(0, 31, 63, 0.8);
+        }
+
+        .login-prompt a {
+            color: rgb(0, 31, 63);
+            font-weight: 600;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .login-prompt a:hover {
+            color: rgb(195, 159, 71);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
         }
 
         .form-group label {
             display: block;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             letter-spacing: 0.05em;
             color: rgb(0, 31, 63);
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             font-weight: 400;
         }
 
         .form-group input {
             width: 100%;
-            padding: 14px 16px;
+            padding: 12px 14px;
             font-size: 1rem;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             border: 2px solid rgba(0, 31, 63, 0.2);
@@ -125,37 +150,40 @@
             color: rgba(0, 31, 63, 0.4);
         }
 
-        /* Django form errors */
+        /* Django/allauth form errors */
         .errorlist {
             list-style: none;
             padding: 0;
-            margin: 8px 0 0 0;
+            margin: 6px 0 0 0;
         }
 
         .errorlist li {
             color: #d32f2f;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             padding: 4px 0;
         }
 
-        .non-field-errors {
+        .allauth-error {
             background: rgba(211, 47, 47, 0.1);
             border-left: 3px solid #d32f2f;
             padding: 12px 16px;
             margin-bottom: 20px;
             border-radius: 4px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 0.95rem;
         }
 
         .helptext {
             display: block;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: rgba(0, 31, 63, 0.6);
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             margin-top: 4px;
+            line-height: 1.3;
         }
 
-        .login-button {
+        .signup-button {
             width: 100%;
             padding: 16px;
             font-family: 'Bebas Neue', sans-serif;
@@ -174,7 +202,7 @@
             margin-top: 10px;
         }
 
-        .login-button:hover {
+        .signup-button:hover {
             background: #fff;
             color: rgb(0, 31, 63);
             transform: translateY(-2px);
@@ -184,7 +212,7 @@
                 0 12px 25px rgba(195, 159, 71, 0.4);
         }
 
-        .login-button:active {
+        .signup-button:active {
             transform: translateY(1px);
             box-shadow:
                 0 2px 0 rgba(0, 0, 0, 0.1),
@@ -192,28 +220,20 @@
                 0 4px 10px rgba(195, 159, 71, 0.3);
         }
 
-        .login-footer {
+        .signup-footer {
             padding: 20px 30px 30px;
             text-align: center;
-            color: rgba(0, 31, 63, 0.6);
-            font-size: 1rem;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
 
-        .login-footer a {
-            color: rgb(0, 31, 63);
-            text-decoration: none;
-            font-weight: 600;
-            transition: color 0.3s ease;
-        }
-
-        .login-footer a:hover {
-            color: rgb(195, 159, 71);
+        .help-text {
+            color: rgba(0, 31, 63, 0.5);
+            font-size: 0.9rem;
         }
 
         /* Responsive adjustments */
         @media (max-width: 480px) {
-            .login-container {
+            .signup-container {
                 width: 95%;
                 margin: 20px;
             }
@@ -222,67 +242,64 @@
                 font-size: 2.8rem;
             }
 
-            .login-header {
+            .signup-header {
                 padding: 30px 20px 20px;
             }
 
-            .login-form {
+            .signup-form {
                 padding: 30px 20px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-header">
+    <div class="signup-container">
+        <div class="signup-header">
             <h1 class="logo-title">RECRUITAPP</h1>
-            <p class="login-subtitle">Agent Login</p>
+            <p class="signup-subtitle">Create Your Account</p>
         </div>
 
-        <form method="post" class="login-form">
+        <form method="post" class="signup-form" action="{% url 'account_signup' %}">
             {% csrf_token %}
 
+            <div class="login-prompt">
+                Already have an account? <a href="{% url 'account_login' %}">Sign in here</a>
+            </div>
+
             {% if form.non_field_errors %}
-                <div class="non-field-errors">
-                    {{ form.non_field_errors }}
+                <div class="allauth-error">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
                 </div>
             {% endif %}
 
-            <div class="form-group">
-                <label for="{{ form.username.id_for_label }}">Username</label>
-                {{ form.username }}
-                {% if form.username.errors %}
-                    <ul class="errorlist">
-                        {% for error in form.username.errors %}
-                            <li>{{ error }}</li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-                {% if form.username.help_text %}
-                    <span class="helptext">{{ form.username.help_text }}</span>
-                {% endif %}
-            </div>
+            {% for field in form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
 
-            <div class="form-group">
-                <label for="{{ form.password.id_for_label }}">Password</label>
-                {{ form.password }}
-                {% if form.password.errors %}
-                    <ul class="errorlist">
-                        {% for error in form.password.errors %}
-                            <li>{{ error }}</li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-                {% if form.password.help_text %}
-                    <span class="helptext">{{ form.password.help_text }}</span>
-                {% endif %}
-            </div>
+                    {% if field.errors %}
+                        <ul class="errorlist">
+                            {% for error in field.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
 
-            <button type="submit" class="login-button">Login</button>
+                    {% if field.help_text %}
+                        <span class="helptext">{{ field.help_text }}</span>
+                    {% endif %}
+                </div>
+            {% endfor %}
+
+            {{ redirect_field }}
+
+            <button type="submit" class="signup-button">Create Account</button>
         </form>
 
-        <div class="login-footer">
-            <p>Need help? Contact your administrator</p>
+        <div class="signup-footer">
+            <p class="help-text">By creating an account, you agree to our Terms of Service</p>
         </div>
     </div>
 </body>

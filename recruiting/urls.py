@@ -34,5 +34,8 @@ urlpatterns = [
     # DEVELOPMENT/TESTING ONLY (REMOVE BEFORE PRODUCTION)
     path('dev/reset-my-data/', views.reset_my_data, name='reset_my_data'),
 
+    # FAMILY ACCOUNT SETUP (Milestone 4)
+    path('setup/role/', views.role_selection, name='role_selection'),
+
     path('accounts/', include('allauth.urls')),
 ]

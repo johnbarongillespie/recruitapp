@@ -3,8 +3,8 @@ from dotenv import load_dotenv
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponse
 import json
-from .models import PromptComponent, Conversation, UserProfile, ChatSession, SportProfile, Sport, LedgerEntry, ActionItem, AdminSettings 
-from .forms import CustomUserCreationForm
+from .models import PromptComponent, Conversation, UserProfile, ChatSession, SportProfile, Sport, LedgerEntry, ActionItem, AdminSettings, FamilyAccount, FamilyMember
+from .forms import CustomUserCreationForm, RoleSelectionForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import default_token_generator
@@ -488,3 +488,66 @@ def toggle_untethered_mode(request):
             return JsonResponse({'status': 'error', 'message': f'Toggle failed: {str(e)}'}, status=500)
 
     return JsonResponse({'status': 'error', 'message': 'Only POST requests allowed.'}, status=405)
+
+# ------------------------------------
+# --- FAMILY ACCOUNT SETUP (Milestone 4) ---
+# ------------------------------------
+
+@login_required
+def role_selection(request):
+    """
+    Post-signup flow: User selects their role (athlete or parent).
+    Creates FamilyAccount and FamilyMember based on selection.
+
+    This view is triggered after allauth signup via the CustomSignupForm.save() method
+    which sets session['needs_role_selection'] = True
+    """
+    # Check if user already has a family membership
+    try:
+        family_member = request.user.family_membership
+        # User already has a role, redirect to agent
+        logger.info(f"User '{request.user.username}' already has family role: {family_member.role}")
+        return redirect('index')
+    except FamilyMember.DoesNotExist:
+        pass  # User needs to select role
+
+    if request.method == 'POST':
+        form = RoleSelectionForm(request.POST)
+        if form.is_valid():
+            role = form.cleaned_data['role']
+            child_first_name = form.cleaned_data.get('child_first_name', '')
+
+            try:
+                # Create FamilyAccount with user's email as primary
+                family_account = FamilyAccount.objects.create(
+                    primary_email=request.user.email
+                )
+
+                # Create FamilyMember to link user to family
+                family_member = FamilyMember.objects.create(
+                    family_account=family_account,
+                    user=request.user,
+                    role=role,
+                    can_invite_members=(role in ['parent', 'guardian']),  # Parents can invite
+                )
+
+                # Clear session flag
+                if 'needs_role_selection' in request.session:
+                    del request.session['needs_role_selection']
+
+                logger.info(f"Created FamilyAccount for '{request.user.email}' with role '{role}'")
+
+                # Optional: Store child's first name in session for future invitation flow
+                if role in ['parent', 'guardian'] and child_first_name:
+                    request.session['child_first_name'] = child_first_name
+
+                # Redirect to agent
+                return redirect('index')
+
+            except Exception as e:
+                logger.error(f"Error creating family account for user {request.user.username}: {e}")
+                form.add_error(None, "An error occurred creating your account. Please try again.")
+    else:
+        form = RoleSelectionForm()
+
+    return render(request, 'recruiting/role_selection.html', {'form': form})

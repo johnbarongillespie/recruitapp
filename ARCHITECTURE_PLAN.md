@@ -920,6 +920,258 @@ if user.admin_settings.untethered_mode_enabled and "analytics" in user_prompt.lo
 
 ---
 
+---
+
+## MILESTONE 5: Parent-Specific Agent Persona ⭐⭐⭐
+**Complexity:** Medium
+**Timeline:** 1-2 weeks
+**Dependencies:** Milestone 4 (family accounts must exist)
+
+### Key Concept:
+
+Currently, both parents and athletes use the same "Coach Alex" agent persona designed for athletes. Parents can roleplay as their child, but a dedicated parent persona would better serve their needs.
+
+**Current State (Interim):**
+```
+┌───────────────────────┬────────────────────────┐
+│   Athlete User        │   Parent User          │
+│   ↓                   │   ↓                    │
+│   Chat: Coach Alex    │   Chat: Coach Alex     │
+│   (Private chat)      │   (Private chat)       │
+│   ↓                   │   ↓                    │
+│   Can save insights   │   Can save insights    │
+│   to shared Ledger    │   to shared Ledger     │
+│   ↓                   │   ↓                    │
+│   Can create actions  │   Can create actions   │
+│   in shared Game Plan │   in shared Game Plan  │
+└───────────────────────┴────────────────────────┘
+             │                    │
+             └────────┬───────────┘
+                      ↓
+             SHARED RESOURCES
+             • ONE Ledger (both can save)
+             • ONE Game Plan (both can add/complete)
+             • ONE Profile (both can edit)
+
+Note: Each has SEPARATE, PRIVATE chat with Coach Alex
+      but they SHARE the Ledger and Game Plan outputs
+```
+
+**Future State (Milestone 5):**
+```
+┌───────────────────────┬────────────────────────┐
+│   Athlete User        │   Parent User          │
+│   ↓                   │   ↓                    │
+│   Chat: Coach Alex    │   Chat: Coach Taylor   │
+│   (Private, athlete-  │   (Private, parent-    │
+│    focused persona)   │    focused persona)    │
+│   ↓                   │   ↓                    │
+│   "How do I email     │   "Should my daughter  │
+│   coaches?"           │   focus on camps?"     │
+│   ↓                   │   ↓                    │
+│   Can save insights   │   Can save insights    │
+│   to shared Ledger    │   to shared Ledger     │
+│   ↓                   │   ↓                    │
+│   Can create actions  │   Can create actions   │
+│   in shared Game Plan │   in shared Game Plan  │
+└───────────────────────┴────────────────────────┘
+             │                    │
+             └────────┬───────────┘
+                      ↓
+             SHARED RESOURCES
+             • ONE Ledger (both can save)
+             • ONE Game Plan (both can add/complete)
+             • ONE Profile (both can edit)
+
+Note: Each has SEPARATE, PRIVATE chat with different personas
+      but they SHARE the Ledger and Game Plan outputs
+```
+
+### Key Workflow Pattern:
+
+**The Power of Shared Resources:**
+
+```
+Example Flow:
+
+1. PARENT chats with Coach Alex privately
+   Parent: "What camps should my daughter attend?"
+   Coach: "Here are 3 camps for volleyball in your region..."
+
+2. PARENT saves insight to SHARED Ledger
+   → Ledger Entry: "Top 3 volleyball camps (saved by Parent)"
+
+3. ATHLETE chats with Coach Alex privately (separate conversation)
+   Athlete: "I want to improve my vertical jump"
+   Coach: "Here's a training plan..."
+
+4. ATHLETE saves insight to SHARED Ledger
+   → Ledger Entry: "Vertical jump training plan (saved by Athlete)"
+
+5. PARENT creates action in SHARED Game Plan
+   → Action Item: "Register for Stanford volleyball camp by June 1"
+     Created by: Parent
+
+6. ATHLETE completes action in SHARED Game Plan
+   → Action Item: "Register for Stanford volleyball camp by June 1"
+     Created by: Parent
+     Completed by: Athlete ✓
+
+Result: Both parent and athlete are working from the same playbook,
+        but each has private conversations with Coach Alex to get
+        personalized advice for their role in the recruiting process.
+```
+
+**Why This Matters:**
+- **Coordination**: Parent and athlete stay aligned on priorities
+- **Accountability**: Both can see what needs to be done and who did it
+- **Privacy**: Each can ask sensitive questions privately
+- **Attribution**: Track who saved what and who completed what
+
+---
+
+### Parent Agent Persona Design (Future - Milestone 5):
+
+**Name**: Coach Taylor (approachable, experienced)
+
+**Tone Differences**:
+- **Coach Alex (Athlete)**: Direct, motivational, "you can do this"
+- **Coach Taylor (Parent)**: Supportive, strategic, "here's how to support your child"
+
+**Topic Focus**:
+- Financial planning (scholarships, costs)
+- NCAA eligibility timeline from parent perspective
+- How to support without being overbearing
+- Red flags to watch for in recruiting process
+- Balancing multiple sports/activities
+- Mental health and pressure management
+
+**Example Interactions**:
+
+**Athlete asks Coach Alex:**
+> "Should I contact coaches now or wait?"
+
+**Parent asks Coach Taylor:**
+> "When should my daughter start reaching out to coaches? I don't want to push too hard."
+
+**Coach Taylor's response would include:**
+- Timeline guidance
+- Signs the athlete is ready
+- How to have the conversation with their child
+- Warning signs of burnout
+
+### Implementation Plan:
+
+#### 1. New Prompt Component
+
+```python
+# recruiting/models.py - PromptComponent
+
+PARENT_AGENT_PROMPT = """
+You are Coach Taylor, an experienced recruiting advisor who specializes in
+helping parents navigate their child's college recruiting journey.
+
+**Your Role:**
+- Guide parents on HOW to support their athlete
+- Provide strategic advice without undermining the athlete's agency
+- Address parent-specific concerns (finances, eligibility, safety)
+- Help parents avoid common pitfalls (being overbearing, unrealistic expectations)
+
+**Tone:**
+- Supportive but realistic
+- Strategic and practical
+- Emphasize partnership between parent and athlete
+
+**Context Awareness:**
+- You know this is a FAMILY ACCOUNT
+- Parent and athlete share The Ledger and Game Plan
+- Any insights you provide will be visible to both
+- Frame advice as "here's how to support [athlete's name]"
+
+**Current Family Context:**
+{family_context}
+"""
+```
+
+#### 2. Dynamic Prompt Selection
+
+```python
+# recruiting/views.py - ask_agent function
+
+def get_agent_prompt_for_user(user):
+    """
+    Return appropriate agent prompt based on user's family role.
+    """
+    try:
+        family_member = user.family_membership
+
+        if family_member.role in ['parent', 'guardian']:
+            # Use parent-specific prompt
+            return PromptComponent.objects.get(name='parent_agent_core_prompt')
+        else:
+            # Use athlete-focused prompt
+            return PromptComponent.objects.get(name='recruiter_core_prompt')
+
+    except FamilyMember.DoesNotExist:
+        # Solo user, default to athlete prompt
+        return PromptComponent.objects.get(name='recruiter_core_prompt')
+```
+
+#### 3. Shared Context Enhancement
+
+Both agents see the shared resources:
+
+```python
+SHARED_FAMILY_CONTEXT = """
+FAMILY ACCOUNT RESOURCES:
+- The Ledger: {ledger_entry_count} shared insights
+- Game Plan: {action_item_count} action items ({completed_count} completed)
+- Athlete Profile: {profile_completion}% complete
+
+Recent activity:
+{recent_ledger_entries}
+{recent_action_items}
+"""
+```
+
+This ensures both parent and athlete agents are working from the same playbook.
+
+### Future Enhancements:
+
+1. **Parent-Child Coordination Mode**: Agent detects when parent and athlete are both online and facilitates a three-way conversation
+
+2. **Conflict Resolution**: Agent notices discrepancies (parent thinks athlete should contact 20 schools, athlete only wants 5) and helps facilitate discussion
+
+3. **Progress Reports**: Weekly digest sent to parents summarizing athlete's activity and next steps
+
+---
+
+## IMPLEMENTATION ROADMAP (UPDATED)
+
+### Phase 1: Foundation (Week 1-2)
+1. ✅ Milestone 1: Enhanced Welcome (2 days)
+2. ✅ Milestone 3 Part 1: Admin permissions, data reset, untethered mode (1 week)
+
+### Phase 2: Profiles (Week 3-5)
+3. ✅ Milestone 2 Part 1: SportSchema model, AthleteProfile model (3 days)
+4. ✅ Milestone 2 Part 2: Basic Profile view (manual form) (3 days)
+5. ✅ Milestone 2 Part 3: Onboarding interview flow (1.5 weeks)
+
+### Phase 3: Family Accounts (Week 6-8)
+6. ✅ Milestone 4 Part 1: FamilyAccount models, migration (3 days)
+7. ✅ Milestone 4 Part 2: Invitation system (4 days)
+8. ✅ Milestone 4 Part 3: Shared resource UX (Ledger/Actions with attribution) (1 week)
+
+### Phase 4: Polish & Admin Dashboard (Week 9)
+9. ✅ Milestone 3 Part 2: Admin dashboard with analytics (1 week)
+10. ✅ Testing, bug fixes, documentation
+
+### Phase 5: Parent Agent Persona (Week 10-11)
+11. 🔜 Milestone 5: Create parent-specific agent persona (1-2 weeks)
+12. 🔜 Test family account interactions with dual personas
+
+---
+
 ## NEXT STEPS
 
 **Ready to start implementation?** I recommend this order:
@@ -928,7 +1180,6 @@ if user.admin_settings.untethered_mode_enabled and "analytics" in user_prompt.lo
 2. **Milestone 3 Part 1** (1 week) - Gives you admin tools for testing everything else
 3. **Milestone 2** (3 weeks) - Core value prop
 4. **Milestone 4** (2-3 weeks) - Differentiator
+5. **Milestone 5** (1-2 weeks) - Parent-specific experience (Future)
 
-**Total estimated timeline: 8-9 weeks for full implementation**
-
-Which milestone would you like to start with?
+**Total estimated timeline: 10-12 weeks for full implementation with parent persona**

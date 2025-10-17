@@ -8,82 +8,760 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Teko:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Teko:wght@700&family=Courier+Prime:wght@700&family=Bebas+Neue&display=swap" rel="stylesheet">
     <title>RecruitTalk</title>
     <style>
+        /* Wanted M54 Font - Place WantedM54.ttf in recruiting/static/recruiting/fonts/ */
+        @font-face {
+            font-family: 'Wanted M54';
+            src: url("{% static 'recruiting/fonts/WantedM54.ttf' %}") format('truetype'),
+                 url("{% static 'recruiting/fonts/Wanted M54.ttf' %}") format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+
         body, html {
             height: 100%;
             margin: 0;
             font-family: 'Roboto', sans-serif;
             color: white;
             background-color: #1a1a1a;
+            overflow: hidden;
         }
-        .hero-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
+
+        /* Video carousel container */
+        .video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
             height: 100%;
-            background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url("{% static 'recruiting/images/hero-background.jpg' %}");
+            z-index: 1;
+            overflow: hidden;
+            background-color: #1a1a1a;
+        }
+
+        /* Static image placeholder while videos load */
+        .loading-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.6)), url("{% static 'recruiting/images/hero-background.jpg' %}");
             background-position: center;
             background-repeat: no-repeat;
             background-size: cover;
-            text-align: center;
+            opacity: 1;
+            transition: opacity 1.5s ease-in-out;
+            z-index: 0;
+        }
+
+        .loading-placeholder.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Loading indicator */
+        .loading-indicator {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 30;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .loading-indicator.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Individual video slides */
+        .video-slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out;
+            z-index: 10;
+        }
+
+        .video-slide.active {
+            opacity: 1;
+        }
+
+        .video-slide video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Removed dark overlay - using enhanced text shadows instead */
+
+        .hero-container {
+            position: relative;
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-start;
+            height: 100%;
+            text-align: left;
+            z-index: 100;
+            padding: 40px;
         }
         .content-box {
-            padding: 40px;
-            background: rgba(0, 0, 0, 0.2);
+            padding: 0;
+            background: transparent;
             border-radius: 10px;
+            max-width: 900px;
         }
+        /* Removed conflicting .intro-text class that was applying italic to chyron */
         .title {
-            font-family: 'Teko', sans-serif;
-            font-size: 10vw;
-            font-weight: 700;
-            letter-spacing: 0.1em;
+            font-family: 'Wanted M54', 'Bebas Neue', sans-serif; /* Wanted M54 with Bebas Neue fallback */
+            font-size: 7.3vw; /* Adjusted for Wanted M54's wider character width to achieve 40vw */
+            font-weight: normal;
+            letter-spacing: 0.02em; /* Reduced letter spacing for tighter fit */
             margin: 0;
+            margin-bottom: 0; /* Removed margin - tagline will overlap with negative margin */
             line-height: 1;
+            display: inline-block;
+            max-width: none;
+            color: rgb(195, 159, 71); /* Gold */
+            /* Beveled/Embossed Effect with Navy */
+            text-shadow:
+                2px 2px 0 rgba(0, 31, 63, 0.8),         /* Navy shadow for emboss depth */
+                -1px -1px 0 rgba(255, 255, 255, 0.4),   /* Light highlight on top-left */
+                3px 3px 12px rgba(0, 0, 0, 0.95),       /* Depth shadow */
+                0 0 20px rgba(0, 0, 0, 0.8);            /* Glow shadow */
+            text-align: left;
         }
-        .subtitle {
-            font-size: 1.2rem;
-            margin-top: 10px;
-            margin-bottom: 40px;
-            font-weight: 300;
+        .tagline {
+            font-family: 'Wanted M54', 'Bebas Neue', sans-serif; /* Changed to Wanted M54 */
+            font-size: 1.8vw; /* Increased 20% from 1.5vw to match title width */
+            margin: 0;
+            margin-top: -15px; /* Negative margin to overlap title and close the gap */
+            font-weight: normal;
+            letter-spacing: 0.02em; /* Match title's tighter spacing */
+            line-height: 1.2;
+            display: block;
+            color: rgb(195, 159, 71); /* Same gold as title */
+            text-shadow: 3px 3px 10px rgba(0, 0, 0, 0.95),
+                         0 0 15px rgba(0, 0, 0, 0.8),
+                         0 0 25px rgba(0, 0, 0, 0.6);
+            text-align: left;
+            text-transform: uppercase;
         }
+        /* Body text removed - moved to chyron */
         .button-container {
+            position: fixed;
+            bottom: 100px; /* 40px above 60px ticker - matches right padding */
+            right: 40px;
             display: flex;
-            justify-content: center;
-            gap: 20px; /* Space between buttons */
+            gap: 20px;
+            z-index: 160; /* Above ticker */
         }
         .btn {
             display: inline-block;
-            padding: 12px 24px;
-            border: 2px solid #fff;
-            border-radius: 5px;
-            background-color: transparent;
-            color: #fff;
+            padding: 15px 35px;
+            border-radius: 8px;
             text-decoration: none;
             font-weight: 700;
-            transition: background-color 0.3s, color 0.3s;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            transform: translateY(0);
         }
-        .btn:hover {
-            background-color: #fff;
-            color: #2c2c2c;
+        /* Meet Coach Alex button - Gold with Navy text, Navy with Gold text on hover */
+        .btn-primary {
+            background-color: rgb(195, 159, 71); /* Gold */
+            border: 2px solid rgb(195, 159, 71);
+            color: rgb(0, 31, 63); /* Navy text */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4),
+                        0 2px 4px rgba(0, 0, 0, 0.3),
+                        inset 0 1px 3px rgba(255, 255, 255, 0.2),
+                        inset 0 -2px 4px rgba(0, 0, 0, 0.2);
         }
-        .google-btn {
-            background-color: #fff;
-            color: #444;
+        .btn-primary:hover {
+            background-color: rgb(0, 31, 63); /* Navy background */
+            border-color: rgb(0, 31, 63);
+            color: rgb(195, 159, 71); /* Gold text */
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5),
+                        0 3px 8px rgba(0, 0, 0, 0.4),
+                        inset 0 1px 3px rgba(255, 255, 255, 0.1),
+                        inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+        }
+        /* Login button - Gold with Navy text, White with Navy text on hover */
+        .btn-secondary {
+            background-color: rgb(195, 159, 71); /* Gold */
+            border: 2px solid rgb(195, 159, 71);
+            color: rgb(0, 31, 63); /* Navy text */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4),
+                        0 2px 4px rgba(0, 0, 0, 0.3),
+                        inset 0 1px 3px rgba(255, 255, 255, 0.2),
+                        inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .btn-secondary:hover {
+            background-color: #fff; /* White background */
+            border-color: #fff;
+            color: rgb(0, 31, 63); /* Navy text stays */
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(255, 255, 255, 0.6),
+                        0 3px 8px rgba(0, 0, 0, 0.4),
+                        inset 0 2px 4px rgba(255, 255, 255, 0.5),
+                        inset 0 -1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Sports Ticker - ESPN Chyron Style */
+        .sports-ticker {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60px; /* ESPN standard ~6% of 1080p */
+            overflow: hidden;
+            z-index: 150;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Navy transparent background bar */
+        .ticker-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 31, 63, 0.90); /* Navy with 90% opacity */
+            z-index: 151;
+        }
+
+        .ticker-content {
+            position: relative;
+            display: flex;
+            align-items: center; /* Vertically center all text */
+            white-space: nowrap;
+            animation: scroll-ticker 90s linear infinite; /* Slower for longer content */
+            font-family: 'Bebas Neue', sans-serif; /* ESPN-style font */
+            font-size: 22px; /* Increased by 10% from 20px */
+            line-height: 22px; /* Match font-size for proper centering - ensures 19px buffer above/below */
+            font-weight: 400;
+            font-style: normal; /* Explicitly set to prevent italic */
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+            letter-spacing: 0.08em;
+            z-index: 152;
+            padding-left: 60px; /* Start after logo */
+            padding-top: 2px; /* Fine-tune vertical centering - shift down 2px */
+        }
+        .ticker-item {
+            padding: 0 25px;
+            font-style: normal; /* Prevent any italic styling */
+        }
+        .ticker-item.body-text {
+            color: rgb(218, 180, 95); /* Brighter gold for body text */
+            font-style: normal; /* Explicitly normal */
+        }
+        .ticker-item.intro-text {
+            color: rgb(218, 180, 95); /* Brighter gold for intro text */
+            font-style: normal; /* Explicitly normal */
+        }
+
+        /* News logo in lower left corner */
+        .news-logo {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 60px;
+            height: 60px;
+            z-index: 153; /* On top so ticker slides under it */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(0, 31, 63, 0.95);
+        }
+
+        .news-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Time/Date display in lower right */
+        .ticker-time {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            height: 60px;
+            padding: 0 20px;
+            background-color: rgba(0, 31, 63, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 153;
+            font-family: 'Bebas Neue', sans-serif;
+            color: #fff;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .ticker-time .time {
+            font-size: 1.5rem;
+            line-height: 1;
+            letter-spacing: 0.05em;
+            color: rgb(195, 159, 71); /* Gold */
+        }
+
+        .ticker-time .date {
+            font-size: 0.85rem;
+            line-height: 1;
+            margin-top: 4px;
+            letter-spacing: 0.08em;
+            color: #fff;
+        }
+
+        @keyframes scroll-ticker {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                transform: translateX(-50%);
+            }
         }
     </style>
 </head>
 <body>
-    <div class="hero-container">
-        <div class="content-box">
-            <h1 class="title">RECRUIT TALK</h1>
-            <p class="subtitle">Your Path to College Sports Starts Here.</p>
-            <div class="button-container">
-                <a href="{% url 'account_login' %}" class="btn">Login</a>
-                <a href="{% url 'account_signup' %}" class="btn">Register</a>
-            </div>
+    <!-- Video Carousel Background -->
+    <div class="video-background">
+        <!-- Static image placeholder - shows immediately while videos load -->
+        <div class="loading-placeholder"></div>
+
+        <!-- Add your video clips here - replace with your actual video paths -->
+        <div class="video-slide active">
+            <video muted playsinline preload="auto">
+                <source src="{% static 'recruiting/videos/clip1.mp4' %}" type="video/mp4">
+            </video>
+        </div>
+        <div class="video-slide">
+            <video muted playsinline preload="auto">
+                <source src="{% static 'recruiting/videos/clip2.mp4' %}" type="video/mp4">
+            </video>
+        </div>
+        <div class="video-slide">
+            <video muted playsinline preload="auto">
+                <source src="{% static 'recruiting/videos/clip3.mp4' %}" type="video/mp4">
+            </video>
+        </div>
+        <div class="video-slide">
+            <video muted playsinline preload="auto">
+                <source src="{% static 'recruiting/videos/clip4.mp4' %}" type="video/mp4">
+            </video>
+        </div>
+
+        <!-- Loading indicator -->
+        <div class="loading-indicator">
+            <div class="loading-spinner"></div>
+            <span>Loading videos...</span>
         </div>
     </div>
+
+    <!-- Hero Content -->
+    <div class="hero-container">
+        <div class="content-box">
+            <h1 class="title">RECRUITAPP</h1>
+            <p class="tagline">Your Personal AI College Recruiting Coach</p>
+        </div>
+    </div>
+
+    <!-- Buttons positioned above chyron on right side -->
+    <div class="button-container">
+        <a href="{% url 'account_signup' %}" class="btn btn-primary">Meet Coach Alex</a>
+        <a href="{% url 'account_login' %}" class="btn btn-secondary">Login</a>
+    </div>
+
+    <!-- Sports Ticker with Chyron Style -->
+    <div class="sports-ticker">
+        <!-- Navy transparent background -->
+        <div class="ticker-background"></div>
+
+        <div class="ticker-content">
+            <!-- Body text as 1st entry -->
+            <span class="ticker-item body-text">Coach Alex is your 24/7 AI assistant who understands the recruiting journey—Get real-time guidance, build comprehensive multi-sport profiles, and receive customized strategies that help you stand out to college programs</span>
+            <span class="ticker-item">•</span>
+            <!-- Sports 1-4 -->
+            <span class="ticker-item">FOOTBALL</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">BASKETBALL</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">SOCCER</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">TRACK & FIELD</span>
+            <span class="ticker-item">•</span>
+            <!-- 5th sport -->
+            <span class="ticker-item">SWIMMING</span>
+            <span class="ticker-item">•</span>
+            <!-- Intro at 5th position -->
+            <span class="ticker-item intro-text">INTRODUCING RECRUITAPP, THE WORLD'S FIRST AI POWERED PLATFORM FOR COLLEGE RECRUITING</span>
+            <span class="ticker-item">•</span>
+            <!-- Sports 6-11 -->
+            <span class="ticker-item">DIVING</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">LACROSSE</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">VOLLEYBALL</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">WRESTLING</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">TENNIS</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">GOLF</span>
+            <span class="ticker-item">•</span>
+            <!-- 12th sport -->
+            <span class="ticker-item">ROWING</span>
+            <span class="ticker-item">•</span>
+            <!-- Intro at 12th position -->
+            <span class="ticker-item intro-text">INTRODUCING RECRUITAPP, THE WORLD'S FIRST AI POWERED PLATFORM FOR COLLEGE RECRUITING</span>
+            <span class="ticker-item">•</span>
+            <!-- Sports 13-16 -->
+            <span class="ticker-item">ICE HOCKEY</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">FIELD HOCKEY</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">GYMNASTICS</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">BASEBALL</span>
+            <span class="ticker-item">•</span>
+
+            <!-- Duplicate for seamless loop -->
+            <span class="ticker-item body-text">Coach Alex is your 24/7 AI assistant who understands the recruiting journey—Get real-time guidance, build comprehensive multi-sport profiles, and receive customized strategies that help you stand out to college programs</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">FOOTBALL</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">BASKETBALL</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">SOCCER</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">TRACK & FIELD</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">SWIMMING</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item intro-text">INTRODUCING RECRUITAPP, THE WORLD'S FIRST AI POWERED PLATFORM FOR COLLEGE RECRUITING</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">DIVING</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">LACROSSE</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">VOLLEYBALL</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">WRESTLING</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">TENNIS</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">GOLF</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">ROWING</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item intro-text">INTRODUCING RECRUITAPP, THE WORLD'S FIRST AI POWERED PLATFORM FOR COLLEGE RECRUITING</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">ICE HOCKEY</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">FIELD HOCKEY</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">GYMNASTICS</span>
+            <span class="ticker-item">•</span>
+            <span class="ticker-item">BASEBALL</span>
+            <span class="ticker-item">•</span>
+        </div>
+    </div>
+
+    <!-- News Logo - positioned on top in lower left -->
+    <div class="news-logo">
+        <img src="{% static 'recruiting/images/RA-News_Logo.png' %}" alt="RecruitApp News">
+    </div>
+
+    <!-- Time/Date display in lower right -->
+    <div class="ticker-time">
+        <div class="time" id="ticker-time">--:--</div>
+        <div class="date" id="ticker-date">--- --</div>
+    </div>
+
+    <script>
+        // Video Carousel with Progressive Loading
+        class VideoCarousel {
+            constructor() {
+                this.slides = document.querySelectorAll('.video-slide');
+                this.currentIndex = 0;
+                this.isTransitioning = false;
+                this.loadingPlaceholder = document.querySelector('.loading-placeholder');
+                this.loadingIndicator = document.querySelector('.loading-indicator');
+                this.videosReady = false;
+                this.clip1Monitor = null; // Monitor to keep clip1 ready
+
+                this.init();
+            }
+
+            init() {
+                const firstVideo = this.slides[0].querySelector('video');
+
+                // Wait for first video to be ready to play
+                firstVideo.addEventListener('canplaythrough', () => {
+                    if (!this.videosReady) {
+                        this.startCarousel();
+                    }
+                }, { once: true });
+
+                // Fallback: start after 3 seconds even if not fully loaded
+                setTimeout(() => {
+                    if (!this.videosReady && firstVideo.readyState >= 2) {
+                        console.log('Starting with partial load...');
+                        this.startCarousel();
+                    }
+                }, 3000);
+
+                // Start loading the first video
+                firstVideo.load();
+
+                // Progressively load remaining videos in background
+                this.progressivelyLoadVideos();
+            }
+
+            startCarousel() {
+                this.videosReady = true;
+
+                // Hide loading indicator
+                this.loadingIndicator.classList.add('hidden');
+
+                // Start playing the first video
+                const firstVideo = this.slides[0].querySelector('video');
+                firstVideo.play().catch(e => {
+                    console.warn('Autoplay prevented:', e);
+                    // Keep static image if autoplay is blocked
+                    return;
+                });
+
+                // Fade out the static placeholder after video starts
+                setTimeout(() => {
+                    this.loadingPlaceholder.classList.add('fade-out');
+                }, 500);
+
+                // Listen for when first video ends
+                firstVideo.addEventListener('ended', () => this.transitionToNext());
+            }
+
+            progressivelyLoadVideos() {
+                // Load remaining videos one by one in background
+                for (let i = 1; i < this.slides.length; i++) {
+                    setTimeout(() => {
+                        const video = this.slides[i].querySelector('video');
+                        video.load();
+                    }, i * 2000); // Stagger loading by 2 seconds each
+                }
+            }
+
+            // Continuously monitor and maintain clip1's ready state
+            startClip1Monitoring() {
+                // Clear any existing monitor
+                if (this.clip1Monitor) {
+                    clearInterval(this.clip1Monitor);
+                }
+
+                const firstVideo = this.slides[0].querySelector('video');
+
+                // Check and maintain clip1 every 500ms when not on clip1
+                this.clip1Monitor = setInterval(() => {
+                    if (this.currentIndex !== 0) {
+                        if (firstVideo.readyState < 3) {
+                            console.log('Clip1 monitor: Re-buffering clip1...');
+                            firstVideo.load();
+                        }
+                    }
+                }, 500);
+            }
+
+            stopClip1Monitoring() {
+                if (this.clip1Monitor) {
+                    clearInterval(this.clip1Monitor);
+                    this.clip1Monitor = null;
+                }
+            }
+
+            preloadVideo(index) {
+                if (index >= this.slides.length) return;
+
+                const video = this.slides[index].querySelector('video');
+
+                // Only load if not already loaded
+                if (video.readyState < 2) {
+                    video.load();
+                }
+            }
+
+            transitionToNext() {
+                if (this.isTransitioning) return;
+                this.isTransitioning = true;
+
+                const currentSlide = this.slides[this.currentIndex];
+                const currentVideo = currentSlide.querySelector('video');
+
+                // Calculate next index
+                const nextIndex = (this.currentIndex + 1) % this.slides.length;
+                const nextSlide = this.slides[nextIndex];
+                const nextVideo = nextSlide.querySelector('video');
+
+                // CRITICAL: If we're on clip3 (index 2), aggressively preload clip1 for the loop
+                if (this.currentIndex === 2) {
+                    const firstVideo = this.slides[0].querySelector('video');
+                    if (firstVideo.readyState < 3) {
+                        console.log('Aggressively preloading clip1 for loop...');
+                        firstVideo.preload = 'auto';
+                        firstVideo.load();
+                    }
+                }
+
+                // Check if next video is ready and force load if not
+                if (nextVideo.readyState < 3) {
+                    console.log(`Next video (clip${nextIndex + 1}) not ready, forcing load...`);
+                    nextVideo.preload = 'auto';
+                    nextVideo.load();
+                }
+
+                // Wait for next video to be ready, then transition
+                const startTransition = () => {
+                    // Reset video to start
+                    nextVideo.currentTime = 0;
+
+                    // Start playing next video
+                    const playPromise = nextVideo.play();
+                    if (playPromise !== undefined) {
+                        playPromise.then(() => {
+                            console.log(`Clip${nextIndex + 1} playing smoothly`);
+                        }).catch(e => console.warn('Play error:', e));
+                    }
+
+                    // Crossfade transition
+                    nextSlide.classList.add('active');
+
+                    setTimeout(() => {
+                        currentSlide.classList.remove('active');
+                        currentVideo.pause();
+                        currentVideo.currentTime = 0;
+
+                        this.currentIndex = nextIndex;
+                        this.isTransitioning = false;
+
+                        // Start monitoring clip1 when we leave it
+                        if (nextIndex === 1) {
+                            console.log('Starting clip1 continuous monitoring...');
+                            this.startClip1Monitoring();
+                        }
+                        // Stop monitoring when we return to clip1
+                        if (nextIndex === 0) {
+                            console.log('Stopping clip1 monitoring (we\'re back at clip1)');
+                            this.stopClip1Monitoring();
+                        }
+
+                        // Preload the video after next
+                        const preloadIndex = (nextIndex + 1) % this.slides.length;
+                        this.preloadVideo(preloadIndex);
+
+                        // Set up ended listener for next video
+                        nextVideo.addEventListener('ended', () => this.transitionToNext(), { once: true });
+                    }, 1500); // Match the CSS transition duration
+                };
+
+                // If next video is well-buffered, transition immediately
+                if (nextVideo.readyState >= 3) {
+                    startTransition();
+                } else {
+                    // Wait for thorough buffering before transitioning
+                    console.log(`Waiting for clip${nextIndex + 1} to buffer...`);
+                    nextVideo.addEventListener('canplaythrough', startTransition, { once: true });
+
+                    // Fallback timeout in case canplaythrough never fires
+                    setTimeout(() => {
+                        if (this.isTransitioning && nextVideo.readyState >= 2) {
+                            console.log('Fallback: starting with partial buffer...');
+                            startTransition();
+                        }
+                    }, 2000);
+                }
+            }
+        }
+
+        // Initialize carousel when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            new VideoCarousel();
+        });
+
+        // Handle video playback errors gracefully
+        document.querySelectorAll('video').forEach(video => {
+            video.addEventListener('error', (e) => {
+                console.warn('Video playback error:', e);
+                // Keep static placeholder visible on error
+            });
+        });
+
+        // Live Time/Date update for chyron
+        function updateTickerTime() {
+            try {
+                // Try to detect user's timezone, fallback to US Central
+                const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Chicago';
+                const now = new Date();
+
+                // Format time: HH:MM AM/PM
+                const timeFormatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone: timeZone,
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+
+                // Format date: MON DD
+                const dateFormatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone: timeZone,
+                    month: 'short',
+                    day: 'numeric'
+                });
+
+                document.getElementById('ticker-time').textContent = timeFormatter.format(now);
+                document.getElementById('ticker-date').textContent = dateFormatter.format(now).toUpperCase();
+            } catch (error) {
+                console.warn('Time display error:', error);
+                // Fallback to basic time if Intl API fails
+                const now = new Date();
+                const hours = now.getHours() % 12 || 12;
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
+                document.getElementById('ticker-time').textContent = `${hours}:${minutes} ${ampm}`;
+                document.getElementById('ticker-date').textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+            }
+        }
+
+        // Update time immediately and every minute
+        updateTickerTime();
+        setInterval(updateTickerTime, 60000);
+    </script>
 </body>
 </html>

@@ -92,9 +92,18 @@ if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-LOGIN_REDIRECT_URL = '/agent/'
+LOGIN_REDIRECT_URL = '/setup/role/'  # Redirect to role selection after login
 LOGOUT_REDIRECT_URL = '/'
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Session timeout settings (15 minutes of inactivity)
+# Note: Client-side JavaScript handles the timeout warning/auto-logout
+# This is a backup server-side timeout (slightly longer to avoid race conditions)
+SESSION_COOKIE_AGE = 1800  # 30 minutes in seconds (server-side backup)
+# SESSION_SAVE_EVERY_REQUEST removed to reduce database pressure
+
+# Allauth signup redirect
+ACCOUNT_SIGNUP_REDIRECT_URL = '/setup/role/'  # Redirect to role selection after signup
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
@@ -102,7 +111,42 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 SITE_ID = 1
-SOCIALACCOUNT_PROVIDERS = {'google': {'SCOPE': ['profile', 'email'], 'AUTH_PARAMS': {'access_type': 'online'}}}
+
+# =============================================================================
+# DJANGO ALLAUTH CONFIGURATION
+# =============================================================================
+
+# Email and Login Configuration
+ACCOUNT_EMAIL_VERIFICATION = 'optional'  # Optional for now, can be 'mandatory' later
+ACCOUNT_UNIQUE_EMAIL = True  # Each email can only be used once
+ACCOUNT_USER_MODEL_USERNAME_FIELD = 'username'
+ACCOUNT_USER_MODEL_EMAIL_FIELD = 'email'
+
+# Login methods (new format)
+ACCOUNT_LOGIN_METHODS = {'email'}  # Login with email instead of username
+
+# Signup fields (new format - requires username, email, email2 confirmation, and passwords)
+ACCOUNT_SIGNUP_FIELDS = ['username*', 'email*', 'email2*', 'password1*', 'password2*']
+
+# Custom signup form with profanity filter and email validation
+ACCOUNT_FORMS = {
+    'signup': 'recruiting.forms.CustomSignupForm',
+}
+
+# Social Account Settings (Google OAuth)
+SOCIALACCOUNT_AUTO_SIGNUP = True  # Auto-create account from Google
+SOCIALACCOUNT_EMAIL_REQUIRED = True  # Require email from social providers
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {'access_type': 'online'},
+        'APP': {
+            'client_id': os.environ.get('GOOGLE_OAUTH_CLIENT_ID', ''),
+            'secret': os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET', ''),
+            'key': ''
+        }
+    }
+}
 
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
