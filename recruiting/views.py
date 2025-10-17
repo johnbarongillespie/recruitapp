@@ -30,9 +30,10 @@ def landing_page(request):
 def index(request, session_id=None):
     if session_id is None:
         # Check if this is a first-time user who needs a welcome message
+        # Only do this for users who have a UserProfile (new signup flow)
         try:
             user_profile = request.user.userprofile
-            if not user_profile.has_seen_welcome:
+            if user_profile and not user_profile.has_seen_welcome:
                 # Check if user has NO chat sessions at all (truly first time)
                 session_count = ChatSession.objects.filter(user=request.user).count()
                 if session_count == 0:
@@ -69,7 +70,8 @@ def index(request, session_id=None):
                     except PromptComponent.DoesNotExist:
                         logger.warning("Welcome message component not found, skipping welcome session creation")
         except UserProfile.DoesNotExist:
-            logger.warning(f"UserProfile not found for user {request.user.username}")
+            # Admin/legacy users without UserProfile - skip welcome message flow
+            logger.info(f"No UserProfile found for user '{request.user.username}' (admin or legacy user), skipping welcome flow")
 
         # Normal flow: redirect to latest session if exists
         latest_session = ChatSession.objects.filter(user=request.user).order_by('-updated_at').first()

@@ -96,12 +96,6 @@ LOGIN_REDIRECT_URL = '/setup/role/'  # Redirect to role selection after login
 LOGOUT_REDIRECT_URL = '/'
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-# Session timeout settings (15 minutes of inactivity)
-# Note: Client-side JavaScript handles the timeout warning/auto-logout
-# This is a backup server-side timeout (slightly longer to avoid race conditions)
-SESSION_COOKIE_AGE = 1800  # 30 minutes in seconds (server-side backup)
-# SESSION_SAVE_EVERY_REQUEST removed to reduce database pressure
-
 # Allauth signup redirect
 ACCOUNT_SIGNUP_REDIRECT_URL = '/setup/role/'  # Redirect to role selection after signup
 
