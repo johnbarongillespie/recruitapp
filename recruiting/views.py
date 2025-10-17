@@ -104,17 +104,18 @@ def ask_agent(request):
 
         player_context = ""
         try:
-            profile = SportProfile.objects.select_related('sport').filter(user=request.user).first()
-            if profile:
-                player_context = (
-                    f"CONTEXT: You are speaking to an athlete. "
-                    f"Their profile is: Sport - {profile.sport.name}, "
-                    f"Position - {profile.position}, "
-                    f"Graduation Year - {profile.graduation_year}. "
-                    f"Use this information to personalize your advice."
-                )
-        except SportProfile.DoesNotExist:
-            logger.info(f"No SportProfile found for user '{request.user.username}'.")
+            # Get user's UserProfile first, then their SportProfile
+            user_profile = UserProfile.objects.filter(user=request.user).first()
+            if user_profile:
+                profile = SportProfile.objects.select_related('sport').filter(user_profile=user_profile).first()
+                if profile:
+                    player_context = (
+                        f"CONTEXT: You are speaking to an athlete. "
+                        f"Their profile is: Sport - {profile.sport.name}. "
+                        f"Use this information to personalize your advice."
+                    )
+        except Exception as e:
+            logger.info(f"No SportProfile found for user '{request.user.username}': {e}")
             pass
 
         try:
@@ -417,7 +418,12 @@ def reset_my_data(request):
 
             LedgerEntry.objects.filter(user=request.user).delete()
             ActionItem.objects.filter(user=request.user).delete()
-            SportProfile.objects.filter(user=request.user).delete()
+            # SportProfile is now linked via user_profile, not user directly
+            try:
+                user_profile = request.user.userprofile
+                SportProfile.objects.filter(user_profile=user_profile).delete()
+            except UserProfile.DoesNotExist:
+                pass
 
             # Reset UserProfile flags
             try:
