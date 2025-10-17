@@ -123,16 +123,25 @@ def ask_agent(request):
         try:
             prompt_name = os.getenv('PROMPT_COMPONENT_NAME', 'recruiter_core_prompt')
             core_prompt_base = PromptComponent.objects.get(name=prompt_name).content
-            
+
             # --- MODIFICATION STARTS HERE ---
             # 1. Get the current date and format it.
             current_date_str = datetime.now().strftime('%B %d, %Y')
-            
+
             # 2. Create a new instruction that includes the current date.
             date_instruction = f"IMPORTANT: You must operate as if the current date is always {current_date_str}. Do not refer to this date as being in the future."
-            
-            # 3. Combine the instructions to create the final core prompt.
-            core_prompt = f"{date_instruction}\n\n{player_context}\n\n{core_prompt_base}"
+
+            # 3. Append UI/UX workflow knowledge if it exists
+            ui_workflow_text = ""
+            try:
+                ui_workflow = PromptComponent.objects.get(name='ui_workflow_knowledge')
+                ui_workflow_text = f"\n\n{ui_workflow.content}"
+            except PromptComponent.DoesNotExist:
+                logger.info("UI workflow component not found, skipping.")
+                pass
+
+            # 4. Combine the instructions to create the final core prompt.
+            core_prompt = f"{date_instruction}\n\n{player_context}\n\n{core_prompt_base}{ui_workflow_text}"
             # --- MODIFICATION ENDS HERE ---
 
         except PromptComponent.DoesNotExist:
@@ -141,9 +150,11 @@ def ask_agent(request):
 
         history_dicts = []
         recent_conversations = chat_session.messages.select_related('user').order_by('timestamp')[:10]
+        logger.info(f"[MEMORY DEBUG] Session {session_id}: Found {recent_conversations.count()} previous messages")
         for conv in recent_conversations:
             history_dicts.append({"role": "user", "parts": [{"text": conv.prompt_text}]})
             history_dicts.append({"role": "model", "parts": [{"text": conv.response_text}]})
+        logger.info(f"[MEMORY DEBUG] Session {session_id}: Passing {len(history_dicts)} history entries to AI")
 
         task = get_ai_response.delay(
             user_prompt,
