@@ -5,153 +5,114 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RecruitApp Agent</title>
-    
-    <!-- Markdown parsing and sanitization libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
 
+    <!-- Preconnect to CDNs for faster loading -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Load fonts with display=swap to prevent render blocking -->
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="{% static 'recruiting/css/recruiting.css' %}">
+    <link rel="stylesheet" href="{% static 'recruiting/css/redesign_clean.css' %}?v=2">
 </head>
 <body>
+    <!-- Particles.js Background Container -->
+    <div id="particles-js"></div>
+
     <div class="app-wrapper">
-        <div class="chat-container">
-            <div class="chat-header">
-                <div class="header-left">
-                    <h1>{{ user.username }}'s Recruiting Strategy</h1>
-                    <div class="profile-data-snapshot">
-                        {% if sport_profile %}
-                            Sport: {{ sport_profile.sport.name }} | Pos: {{ sport_profile.position }} | Grad Year: {{ sport_profile.graduation_year }}
-                        {% else %}
-                            Update profile for personalized advice
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="header-right">
-                    <span id="chat-counter" style="display: none; color: var(--color-text-secondary); font-weight: 300;">0 of 3 Used</span>
-                </div>
-            </div>
-            
-            <div id="chat-view" class="main-view">
-                <div id="message-list">
-                </div>
-                <div class="prompt-form-wrapper">
-                    <form id="prompt-form" class="prompt-form">
-                        {% csrf_token %}
-                        <textarea name="prompt" rows="1" placeholder="Ask Coach Alex for advice..." required></textarea>
-                        <button type="submit" id="send-btn" title="Send (Enter)">&uarr;</button>
-                    </form>
-                </div>
-            </div>
-            
-            <div id="ledger-view" class="main-view">
-                <div class="content-scroller">
-                    <h2 class="view-title">The Ledger (Personalized Insights)</h2>
-                    <div id="ledger-entries-container"></div>
-                </div>
-            </div>
-            
-            <div id="actions-view" class="main-view">
-                <div class="content-scroller">
-                    <h2 class="view-title">Action Items (Roadmap)</h2>
-                    <h3 style="color: var(--color-accent); margin-bottom: 15px;">Active Tasks</h3>
-                    <div id="active-actions-container"></div>
-                    <h3 style="color: var(--color-text-secondary); margin-bottom: 15px;">Completed Tasks</h3>
-                    <div id="completed-actions-container"></div>
-                </div>
+        <!-- Header -->
+        <div class="header">
+            <div class="header-logo">RECRUITAPP</div>
+            <div class="header-actions">
+                <span id="chat-counter" class="chat-counter" style="display: none;">0 of 3 Used</span>
+                <a href="{% url 'account_logout' %}" class="logout-btn">Logout</a>
             </div>
         </div>
 
-        <div id="sidebar">
-            <h2 style="text-align: center; margin-bottom: 30px;">RecruitApp</h2>
+        <!-- Left Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-label">CHAT HISTORY</div>
 
-            <nav id="global-nav">
-                <a href="#" id="nav-chat" class="nav-link" title="Your Personal AI Recruiting Coach">
-                    Coach Alex
-                </a>
-                <a href="#" id="nav-ledger" class="nav-link" title="All of your saved insights and earned knowledge gets stored here">
-                    The Ledger
-                </a>
-                <a href="#" id="nav-actions" class="nav-link" title="Coach Alex reviews your items in The Ledger and turns your saved insights into a plan of action">
-                    Game Plan
-                </a>
-            </nav>
-
-            <h3 style="font-size: 1.12rem; color: var(--color-text-main); text-align: center; margin: 25px 0 15px 0; font-weight: 600; font-family: var(--font-stack);">Chat History</h3>
-
-            <button id="new-chat-btn">
-                + Start New Chat
-            </button>
-
-            <div style="text-align: center; padding: 5px 0 10px 0; color: var(--color-text-secondary); font-size: 0.85rem;">
-                <span id="chat-counter-sidebar">0 of 3 Chats in Use</span>
+            <!-- Chat History Hover Panel -->
+            <div class="chat-history-panel">
+                <div class="chat-history-content">
+                    <h3 class="chat-history-title">Chat History</h3>
+                    <button class="new-chat-btn" id="new-chat-btn">+ Start New Chat</button>
+                    <div class="chat-counter">
+                        <span id="chat-counter-sidebar">0 of 3 Chats in Use</span>
+                    </div>
+                    <ul class="session-list" id="session-list"></ul>
+                </div>
             </div>
 
-            <ul id="session-list"></ul>
 
-            <!-- ADMIN CONTROLS (for users with AdminSettings) -->
+            <!-- Admin Controls (if admin) -->
             {% if user.admin_settings %}
-            <div style="margin-top: auto; padding: 15px; border-top: 2px solid #6366f1;">
+            <div class="admin-section">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                    <span style="font-size: 0.85rem; font-weight: 600; color: #a5b4fc;">Admin: Untethered Mode</span>
+                    <span style="font-size: 0.75rem; font-weight: 600;">Admin</span>
                     <label class="toggle-switch">
                         <input type="checkbox" id="admin-untethered-toggle" {% if user.admin_settings.untethered_mode_enabled %}checked{% endif %}>
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
-                <p style="font-size: 0.7rem; color: #818cf8; margin: 0;">Remove all topic & persona constraints</p>
             </div>
             {% endif %}
 
-            <!-- DEVELOPMENT ONLY - REMOVE BEFORE PRODUCTION -->
-            <div style="margin-top: {% if user.admin_settings %}10px{% else %}auto{% endif %}; padding: 15px; border-top: 2px solid #ff4444;">
-                <button id="dev-reset-btn" style="
-                    width: 100%;
-                    background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
-                    color: white;
-                    border: none;
-                    padding: 10px;
-                    border-radius: 8px;
-                    font-weight: 700;
-                    cursor: pointer;
-                    font-size: 0.9rem;
-                    transition: all 0.2s;
-                ">
-                    ⚠️ RESET ALL DATA
-                </button>
-                <p style="
-                    font-size: 0.7rem;
-                    color: #ff6666;
-                    margin-top: 5px;
-                    margin-bottom: 15px;
-                    text-align: center;
-                    font-weight: 600;
-                ">DEV ONLY - DESTRUCTIVE</p>
+            <!-- Dev Reset Button -->
+            <div style="margin-top: 10px; padding: 10px;">
+                <button id="dev-reset-btn" style="width: 100%; background: #ff4444; color: white; border: none; padding: 8px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-weight: 700;">RESET</button>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="content-area">
+            <!-- Floating Nav Buttons -->
+            <div class="floating-nav">
+                <button class="nav-btn active" id="nav-chat">Coach Alex</button>
+                <button class="nav-btn" id="nav-ledger">The Ledger</button>
+                <button class="nav-btn" id="nav-gameplan">Game Plan</button>
+                <button class="nav-btn" id="nav-profile" disabled>Profile</button>
             </div>
 
-            <!-- LOGOUT BUTTON -->
-            <div style="padding: 0 15px 15px 15px;">
-                <a href="{% url 'account_logout' %}" class="logout-btn" style="
-                    display: block;
-                    width: 100%;
-                    text-align: center;
-                    padding: 10px;
-                    background-color: var(--color-border);
-                    color: var(--color-text-main);
-                    text-decoration: none;
-                    border-radius: 8px;
-                    font-weight: 600;
-                    transition: all 0.2s;
-                ">
-                    Logout
-                </a>
+            <!-- Floating Message Modal -->
+            <div class="chat-modal" id="chat-modal">
+                <div class="message-area" id="message-area"></div>
+            </div>
+
+            <!-- Floating Input Modal (Separate) -->
+            <div class="input-modal" id="input-modal">
+                <form id="message-form" class="input-container">
+                    {% csrf_token %}
+                    <textarea class="message-input" id="message-input" placeholder="Ask Coach Alex for advice..." rows="1"></textarea>
+                    <button type="submit" class="send-btn" id="send-btn">&uarr;</button>
+                </form>
+            </div>
+
+            <!-- Ledger Slide Panel -->
+            <div class="slide-panel" id="ledger-panel">
+                <h2 class="panel-title">The Ledger</h2>
+                <div id="ledger-entries"></div>
+                <h3 style="color: rgba(255,68,68,0.7); margin: 30px 0 15px;">Deleted Insights</h3>
+                <div id="deleted-ledger-entries"></div>
+            </div>
+
+            <!-- Game Plan Slide Panel -->
+            <div class="slide-panel gameplan" id="gameplan-panel">
+                <h2 class="panel-title">Game Plan</h2>
+                <h3 style="color: #d4a574; margin-bottom: 15px;">Active Tasks</h3>
+                <div id="active-actions"></div>
+                <h3 style="color: rgba(255,255,255,0.6); margin: 30px 0 15px;">Completed Tasks</h3>
+                <div id="completed-actions"></div>
+                <h3 style="color: rgba(255,68,68,0.7); margin: 30px 0 15px;">Deleted Tasks</h3>
+                <div id="deleted-actions"></div>
             </div>
         </div>
     </div>
 
+    <!-- Modals -->
+    <!-- Delete Chat Modal -->
     <div id="delete-modal" class="modal-overlay">
         <div class="modal-content">
             <h3>Chat Limit Reached</h3>
@@ -164,16 +125,15 @@
         </div>
     </div>
 
+    <!-- Ledger Save Modal -->
     <div id="ledger-modal" class="modal-overlay">
-        <div class="ledger-modal-content">
-            <h3 style="color: var(--color-accent); font-size: 1.5rem; margin-bottom: 20px;">Save Insight to Ledger</h3>
-            <p style="margin-bottom: 10px; color: var(--color-text-secondary);">Give this insight a clear, actionable title:</p>
-            <input type="text" id="ledger-title-input" placeholder="e.g., 'Drafting the Initial Coach Email'">
-            <p style="margin-bottom: 5px; font-weight: 600;">Insight Content (Agent's Advice):</p>
-            <textarea id="ledger-content-area" rows="6" readonly"></textarea>
+        <div class="modal-content">
+            <h3>Save to Ledger</h3>
+            <p>Give this insight a clear, actionable title:</p>
+            <input type="text" id="ledger-title-input" placeholder="e.g., 'Initial Coach Outreach Strategy'" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid var(--color-border); border-radius: 5px; background: var(--color-sidebar-bg-solid); color: var(--color-text-main);">
             <div class="modal-buttons">
-                <button id="close-ledger-modal" style="background-color: var(--color-border); color: var(--color-text-main);">Cancel</button>
-                <button id="confirm-save-ledger" style="background-color: var(--color-accent-dark); color: var(--color-sidebar-bg-solid); font-weight: 700;">Save to Ledger</button>
+                <button id="ledger-cancel-btn" style="background-color: var(--color-border); color: var(--color-text-main);">Cancel</button>
+                <button id="ledger-save-btn" style="background-color: var(--color-accent-dark); color: white; font-weight: 700;">Save to Ledger</button>
             </div>
         </div>
     </div>
@@ -205,18 +165,33 @@
         </div>
     </div>
 
+    <!-- Load JavaScript libraries at end of body for faster page rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    // Handle cases where DOM is already ready (script loads after DOMContentLoaded fires)
+    function ready(fn) {
+        if (document.readyState !== 'loading') {
+            fn();
+        } else {
+            document.addEventListener('DOMContentLoaded', fn);
+        }
+    }
+
+    ready(() => {
+        console.log('[DEBUG] Script initialized!');
         const CHAT_LIMIT = 3;
         let currentSessionId = null;
         let sessionCount = 0;
         let currentSessions = [];
-        let loaderElement = null;
-        let currentConversationId = null; 
+        let loaderElement = null; 
 
-        const form = document.getElementById('prompt-form');
-        const messageList = document.getElementById('message-list');
-        const textarea = form.querySelector('textarea');
+        // NEW STRUCTURE ELEMENTS
+        const form = document.getElementById('message-form');
+        const messageList = document.getElementById('message-area');
+        const textarea = document.getElementById('message-input');
         const sendButton = document.getElementById('send-btn');
         const newChatBtn = document.getElementById('new-chat-btn');
         const csrfToken = document.querySelector('input[name=csrfmiddlewaretoken]');
@@ -226,45 +201,30 @@
         const deleteModal = document.getElementById('delete-modal');
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
         const deletableSessionsList = document.getElementById('deletable-sessions-list');
-        
-        const mainViews = document.querySelectorAll('.main-view');
-        const ledgerView = document.getElementById('ledger-view');
-        const ledgerEntriesContainer = document.getElementById('ledger-entries-container');
-        const activeActionsContainer = document.getElementById('active-actions-container');
-        const completedActionsContainer = document.getElementById('completed-actions-container');
-        
+        const chatModal = document.getElementById('chat-modal');
+
+        // Ledger & Game Plan elements
+        const ledgerPanel = document.getElementById('ledger-panel');
+        const gameplanPanel = document.getElementById('gameplan-panel');
         const ledgerModal = document.getElementById('ledger-modal');
         const ledgerTitleInput = document.getElementById('ledger-title-input');
-        const ledgerContentArea = document.getElementById('ledger-content-area');
-        const confirmSaveLedger = document.getElementById('confirm-save-ledger');
-        const closeLedgerModal = document.getElementById('close-ledger-modal');
-        
-        const navLinks = document.querySelectorAll('.nav-link');
-        
+        const ledgerSaveBtn = document.getElementById('ledger-save-btn');
+        const ledgerCancelBtn = document.getElementById('ledger-cancel-btn');
+        const ledgerEntries = document.getElementById('ledger-entries');
+        const deletedLedgerEntries = document.getElementById('deleted-ledger-entries');
+        const activeActions = document.getElementById('active-actions');
+        const completedActions = document.getElementById('completed-actions');
+        const deletedActions = document.getElementById('deleted-actions');
+
+        // Track which conversation is being saved (set when modal opens)
+        let savingConversationId = null;
+        let savingContent = null;
+
         function adjustTextareaHeight() {
             textarea.style.height = 'auto';
             textarea.style.height = (textarea.scrollHeight) + 'px';
         }
         textarea.addEventListener('input', adjustTextareaHeight);
-
-        function switchView(viewId) {
-            mainViews.forEach(view => view.classList.remove('active'));
-            navLinks.forEach(link => link.classList.remove('active'));
-
-            document.getElementById(viewId)?.classList.add('active');
-            document.getElementById('nav-' + viewId.split('-')[0])?.classList.add('active');
-
-            if (viewId === 'ledger-view') fetchLedgerEntries();
-            else if (viewId === 'actions-view') fetchActionItems();
-        }
-        
-        navLinks.forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const viewId = link.id.replace('nav-', '') + '-view';
-                switchView(viewId);
-            });
-        });
 
         function createLoaderElement() {
             const loaderContainer = document.createElement('div');
@@ -300,7 +260,7 @@
                             loadConversation(currentSessionId); 
                             loadChatHistory(); 
                         } else {
-                            addMessage('Sorry, an error occurred while processing your request.', 'agent-message', null);
+                            addMessage('Sorry, an error occurred while processing your request.', 'agent', null);
                         }
                     }
                 } catch (error) {
@@ -316,7 +276,7 @@
             const prompt = textarea.value.trim();
             if (prompt === '') return;
 
-            addMessage(prompt, 'user-message', null);
+            addMessage(prompt, 'user', null);
             textarea.value = '';
             adjustTextareaHeight();
             
@@ -349,7 +309,7 @@
                 hideThinkingAnimation();
                 sendButton.disabled = false;
                 if (!error.message.includes('403')) {
-                    addMessage('Sorry, a network error occurred.', 'agent-message', null);
+                    addMessage('Sorry, a network error occurred.', 'agent', null);
                 }
                 console.error('Submit error:', error);
             }
@@ -371,17 +331,21 @@
                 sessionList.innerHTML = '';
                 currentSessions.forEach(session => {
                     const li = document.createElement('li');
+                    li.className = 'session-item';
+                    li.dataset.sessionId = session.id;
                     li.innerHTML = `
-                        <a href="/agent/${session.id}/" class="session-link" data-session-id="${session.id}">
-                            <div class="session-title">${session.title}</div>
-                            <p class="session-summary">${session.summary || 'Click to view conversation.'}</p>
-                        </a>
+                        <div class="session-title">${session.title}</div>
+                        <div class="session-summary">${session.summary || 'Click to view conversation.'}</div>
                     `;
+                    li.addEventListener('click', () => {
+                        history.pushState({sessionId: session.id}, '', `/agent/${session.id}/`);
+                        loadConversation(session.id);
+                    });
                     sessionList.appendChild(li);
                 });
-                
+
                 if (currentSessionId) {
-                    document.querySelector(`.session-link[data-session-id="${currentSessionId}"]`)?.classList.add('active');
+                    document.querySelector(`.session-item[data-session-id="${currentSessionId}"]`)?.classList.add('active');
                 }
             } catch (error) {
                 console.error("Could not load chat history:", error);
@@ -393,10 +357,9 @@
         function loadConversation(sessionId) {
             if (!sessionId) return;
             currentSessionId = sessionId;
-            switchView('chat-view');
 
-            document.querySelectorAll('.session-link').forEach(link => link.classList.remove('active'));
-            document.querySelector(`.session-link[data-session-id="${sessionId}"]`)?.classList.add('active');
+            document.querySelectorAll('.session-item').forEach(item => item.classList.remove('active'));
+            document.querySelector(`.session-item[data-session-id="${sessionId}"]`)?.classList.add('active');
 
             fetch(`/agent/session/${sessionId}/history/`)
                 .then(response => {
@@ -408,73 +371,65 @@
                     data.history.forEach(message => {
                         // Convert 'model' type to 'agent' for consistency
                         const messageType = message.type === 'model' ? 'agent' : message.type;
-                        addMessage(message.text, `${messageType}-message`, message.id);
+                        addMessage(message.text, messageType, message.id);
                     });
                     if (data.history.length === 0) {
-                        addMessage("I'm your personal AI Recruiting Strategist. Ask me anything about the recruiting process!", 'agent-message', null);
+                        addMessage("I'm your personal AI Recruiting Strategist. Ask me anything about the recruiting process!", 'agent', null);
                     }
                 })
                 .catch(error => {
                     console.error('Error loading conversation history:', error);
                     clearMessageList();
-                    addMessage('Could not load conversation history.', 'agent-message', null); 
+                    addMessage('Could not load conversation history.', 'agent', null); 
                 });
         }
 
         function addMessage(text, className, convId) {
             const messageContainer = document.createElement('div');
-            const bubble = document.createElement('div');
             const safeText = text || "";
-            const isAgent = className.includes('agent-message');
+            const isAgent = className.includes('agent');
 
-            messageContainer.className = `message-container ${isAgent ? 'agent-message-wrapper' : 'user-message-wrapper'}`;
+            // NEW STRUCTURE: .message.agent or .message.user
+            messageContainer.className = `message ${isAgent ? 'agent' : 'user'}`;
+
+            // Create avatar
+            const avatar = document.createElement('div');
+            avatar.className = `avatar ${isAgent ? 'agent' : 'user'}`;
+            avatar.textContent = isAgent ? 'CA' : '{{ user.username|slice:":1"|upper }}';
+
+            // Create bubble
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
 
             if (isAgent) {
-                // Parse markdown and sanitize HTML for agent messages
+                // Parse markdown for agent messages
                 try {
-                    // Check if libraries are loaded
-                    if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
-                        console.error('Markdown libraries not loaded. Displaying plain text.');
-                        bubble.textContent = safeText;
-                    } else {
-                        // Use marked to parse markdown to HTML, then sanitize
+                    if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
                         const rawHtml = marked.parse(safeText);
-                        const sanitizedHtml = DOMPurify.sanitize(rawHtml);
-                        bubble.innerHTML = sanitizedHtml;
+                        bubble.innerHTML = DOMPurify.sanitize(rawHtml);
+                    } else {
+                        bubble.textContent = safeText;
                     }
                 } catch (error) {
                     console.error('Error rendering markdown:', error);
-                    // Fallback to plain text if markdown parsing fails
                     bubble.textContent = safeText;
                 }
             } else {
-                // User messages are plain text
                 bubble.textContent = safeText;
             }
-            bubble.className = `message-bubble ${className}`;
 
-            if (isAgent) {
-                const avatar = document.createElement('div');
-                avatar.className = 'agent-avatar';
-                avatar.textContent = 'CA';
-                messageContainer.appendChild(avatar);
+            // Append avatar and bubble
+            messageContainer.appendChild(avatar);
+            messageContainer.appendChild(bubble);
 
-                const contentWrapper = document.createElement('div');
-                contentWrapper.appendChild(bubble);
-
-                if (convId) {
-                    const actionRow = document.createElement('div');
-                    actionRow.className = 'ledger-action-row';
-                    // Store the ORIGINAL markdown text (before parsing) for the Ledger
-                    const contentToSave = safeText;
-
-                    actionRow.innerHTML = `<button class="save-to-ledger-btn" data-conv-id="${convId}" data-content="${encodeURIComponent(contentToSave)}"><span>+</span> Save Insight</button>`;
-                    actionRow.querySelector('.save-to-ledger-btn').addEventListener('click', openLedgerModal);
-                    contentWrapper.appendChild(actionRow);
-                }
-                messageContainer.appendChild(contentWrapper);
-            } else {
-                messageContainer.appendChild(bubble);
+            // Add save button for agent messages with convId
+            if (isAgent && convId) {
+                const saveBtn = document.createElement('button');
+                saveBtn.className = 'save-insight-btn';
+                saveBtn.dataset.convId = convId;
+                saveBtn.dataset.content = safeText;
+                saveBtn.textContent = '+ Save to Ledger';
+                messageContainer.appendChild(saveBtn);
             }
 
             messageList.appendChild(messageContainer);
@@ -500,7 +455,7 @@
                 const data = await response.json();
                 if (data.status === 'success') {
                     hideDeleteModal();
-                    if (currentSessionId === sessionId) { window.location.href = '/agent/'; } 
+                    if (currentSessionId === sessionId) { window.location.href = '/agent/'; }
                     else { loadChatHistory(); }
                 } else { throw new Error(data.message || 'Deletion failed'); }
             } catch (error) {
@@ -509,175 +464,511 @@
             }
         }
 
-        function openLedgerModal(event) {
-            const button = event.currentTarget;
-            if(button.classList.contains('saved')) return; 
-            currentConversationId = button.dataset.convId;
-            ledgerTitleInput.value = '';
-            ledgerContentArea.value = decodeURIComponent(button.dataset.content);
-            ledgerModal.classList.add('visible');
-        }
-        closeLedgerModal.addEventListener('click', () => ledgerModal.classList.remove('visible'));
+        // ============================================================================
+        // LEDGER FUNCTIONALITY - Clean, DB-efficient implementation
+        // ============================================================================
 
-        confirmSaveLedger.addEventListener('click', async () => {
+        // Event delegation for save buttons (handles dynamically added buttons)
+        messageList.addEventListener('click', (e) => {
+            if (e.target.classList.contains('save-insight-btn')) {
+                const btn = e.target;
+                if (btn.classList.contains('saved')) return; // Already saved
+
+                savingConversationId = btn.dataset.convId;
+                savingContent = btn.dataset.content;
+                ledgerTitleInput.value = '';
+                ledgerModal.classList.add('visible');
+                ledgerTitleInput.focus();
+            }
+        });
+
+        // Cancel button
+        ledgerCancelBtn.addEventListener('click', () => {
+            ledgerModal.classList.remove('visible');
+            savingConversationId = null;
+            savingContent = null;
+        });
+
+        // Save to Ledger
+        ledgerSaveBtn.addEventListener('click', async () => {
             const title = ledgerTitleInput.value.trim();
-            if (!title) { alert("Please provide a title."); return; }
-            
-            confirmSaveLedger.disabled = true;
-            confirmSaveLedger.textContent = 'Saving...';
-            
+            if (!title) {
+                alert('Please provide a title.');
+                ledgerTitleInput.focus();
+                return;
+            }
+
+            // Disable button during save
+            ledgerSaveBtn.disabled = true;
+            ledgerSaveBtn.textContent = 'Saving...';
+
             try {
                 const response = await fetch('/ledger/save/', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken.value },
-                    body: JSON.stringify({ conversation_id: currentConversationId, title: title, content: ledgerContentArea.value.trim() })
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken.value
+                    },
+                    body: JSON.stringify({
+                        conversation_id: savingConversationId,
+                        title: title,
+                        content: savingContent
+                    })
                 });
 
                 const data = await response.json();
+
                 if (data.status === 'success') {
-                    const button = document.querySelector(`.save-to-ledger-btn[data-conv-id="${currentConversationId}"]`);
-                    if (button) {
-                        button.innerHTML = '✔ Added to Ledger';
-                        button.classList.add('saved');
+                    // Optimistically update UI - mark button as saved (NO DB FETCH)
+                    const btn = document.querySelector(`.save-insight-btn[data-conv-id="${savingConversationId}"]`);
+                    if (btn) {
+                        btn.textContent = '✔ Saved';
+                        btn.classList.add('saved');
                     }
+
                     ledgerModal.classList.remove('visible');
-                    if (ledgerView.classList.contains('active')) fetchLedgerEntries();
-                } else { alert('Error: ' + data.message); }
+                    savingConversationId = null;
+                    savingContent = null;
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to save'));
+                }
             } catch (error) {
+                console.error('Save error:', error);
                 alert('Network error while saving.');
             } finally {
-                confirmSaveLedger.disabled = false;
-                confirmSaveLedger.textContent = 'Save to Ledger';
+                ledgerSaveBtn.disabled = false;
+                ledgerSaveBtn.textContent = 'Save to Ledger';
             }
         });
-        
+
+        // ============================================================================
+        // VIEW SWITCHING - Only fetch data when user explicitly opens a view
+        // ============================================================================
+
+        function switchToChat() {
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active', 'glow'));
+            document.getElementById('nav-chat').classList.add('active');
+            ledgerPanel.classList.remove('active');
+            gameplanPanel.classList.remove('active');
+        }
+
+        function switchToLedger() {
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active', 'glow'));
+            document.getElementById('nav-ledger').classList.add('active', 'glow');
+            ledgerPanel.classList.add('active');
+            gameplanPanel.classList.remove('active');
+
+            // Only fetch when explicitly opened
+            fetchLedgerEntries();
+        }
+
+        function switchToGamePlan() {
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active', 'glow'));
+            document.getElementById('nav-ledger').classList.add('active', 'glow');
+            document.getElementById('nav-gameplan').classList.add('active', 'glow');
+            ledgerPanel.classList.add('active');
+            gameplanPanel.classList.add('active');
+
+            // Only fetch when explicitly opened
+            fetchActionItems();
+        }
+
+        document.getElementById('nav-chat')?.addEventListener('click', switchToChat);
+        document.getElementById('nav-ledger')?.addEventListener('click', switchToLedger);
+        document.getElementById('nav-gameplan')?.addEventListener('click', switchToGamePlan);
+
+        // Fetch Ledger entries (called ONLY when user opens Ledger view)
         async function fetchLedgerEntries() {
-            ledgerEntriesContainer.innerHTML = '<p>Loading...</p>';
+            ledgerEntries.innerHTML = '<p style="padding: 20px;">Loading...</p>';
+            deletedLedgerEntries.innerHTML = '';
+
             try {
                 const response = await fetch('/ledger/');
                 const data = await response.json();
-                ledgerEntriesContainer.innerHTML = '';
+
+                ledgerEntries.innerHTML = '';
+                deletedLedgerEntries.innerHTML = '';
+
                 if (data.ledger_entries && data.ledger_entries.length > 0) {
-                    data.ledger_entries.forEach(entry => ledgerEntriesContainer.appendChild(createLedgerEntryElement(entry)));
+                    data.ledger_entries.forEach(entry => {
+                        const entryEl = createLedgerEntry(entry, true); // true = show delete button
+                        ledgerEntries.appendChild(entryEl);
+                    });
                 } else {
-                    ledgerEntriesContainer.innerHTML = '<p>Your Ledger is empty. Save key advice from Coach Alex!</p>';
+                    ledgerEntries.innerHTML = '<p style="padding: 20px; color: rgba(255, 255, 255, 0.5);">No saved insights yet. Click "+ Save to Ledger" on any Coach Alex response to start building your playbook.</p>';
                 }
-            } catch (e) { ledgerEntriesContainer.innerHTML = '<p>Error loading Ledger entries.</p>'; }
+
+                if (data.deleted_entries && data.deleted_entries.length > 0) {
+                    data.deleted_entries.forEach(entry => {
+                        const entryEl = createLedgerEntry(entry, false); // false = no delete button
+                        deletedLedgerEntries.appendChild(entryEl);
+                    });
+                } else {
+                    deletedLedgerEntries.innerHTML = '<p style="padding: 20px; color: rgba(255, 255, 255, 0.5);">No deleted insights.</p>';
+                }
+            } catch (error) {
+                console.error('Ledger fetch error:', error);
+                ledgerEntries.innerHTML = '<p style="padding: 20px; color: #ff4444;">Error loading Ledger entries.</p>';
+            }
         }
-        
-        function createLedgerEntryElement(entry) {
+
+        // Create Ledger entry element
+        function createLedgerEntry(entry, showDeleteBtn = false) {
             const div = document.createElement('div');
-            div.className = 'ledger-entry';
+
+            // Add 'deleted' class if entry is deleted
+            if (entry.is_deleted) {
+                div.className = 'ledger-entry deleted';
+            } else {
+                div.className = 'ledger-entry';
+            }
+
+            div.dataset.entryId = entry.id;
+
             const date = new Date(entry.created_at).toLocaleDateString();
 
-            // Parse markdown content for display
+            // Parse markdown content
             let contentHtml = entry.content;
             if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
                 try {
                     const rawHtml = marked.parse(entry.content);
                     contentHtml = DOMPurify.sanitize(rawHtml);
                 } catch (error) {
-                    console.error('Error parsing markdown in Ledger entry:', error);
-                    contentHtml = entry.content; // Fallback to plain text
+                    console.error('Markdown parse error:', error);
                 }
+            }
+
+            // Buttons - only show for non-deleted entries
+            let buttonsHtml = '';
+            if (!entry.is_deleted) {
+                buttonsHtml = `
+                    <div class="ledger-actions" style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button class="generate-actions-btn" data-entry-id="${entry.id}" style="flex: 1; padding: 10px 12px; background: var(--gold); color: var(--navy-dark); border: none; border-radius: 8px; cursor: pointer; font-weight: 700; transition: all 0.3s;">Generate Action Items</button>
+                        ${showDeleteBtn ? `<button class="delete-ledger-btn" data-entry-id="${entry.id}" style="padding: 10px 15px; background: rgba(255, 68, 68, 0.9); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;">Delete</button>` : ''}
+                    </div>
+                `;
             }
 
             div.innerHTML = `
                 <h4>${entry.title}</h4>
-                <p class="meta">Saved: ${date}</p>
-                <div class="ledger-content">${contentHtml}</div>
-                <div class="ledger-actions">
-                    <button class="generate-actions-btn" data-entry-id="${entry.id}">Generate Action Items</button>
-                    <button class="delete-ledger-btn" data-entry-id="${entry.id}">Delete</button>
-                </div>
+                <p class="meta" style="font-size: 0.85rem; color: rgba(212, 165, 116, 0.8); margin-bottom: 10px;">Saved: ${date}</p>
+                <div class="ledger-content" style="margin-bottom: 15px;">${contentHtml}</div>
+                ${buttonsHtml}
             `;
-            div.querySelector('.generate-actions-btn').addEventListener('click', handleGenerateActionItems);
-            div.querySelector('.delete-ledger-btn').addEventListener('click', handleDeleteLedgerEntry);
+
             return div;
         }
 
-        async function handleDeleteLedgerEntry(event) {
-            const entryId = event.target.dataset.entryId;
-            if (!confirm("Delete this insight?")) return;
-            const response = await fetch(`/ledger/${entryId}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': csrfToken.value }});
-            const data = await response.json();
-            if (data.status === 'success') fetchLedgerEntries();
-            else alert('Error deleting insight.');
-        }
+        // Event delegation for Ledger entry actions
+        ledgerEntries.addEventListener('click', async (e) => {
+            // Delete Ledger entry
+            if (e.target.classList.contains('delete-ledger-btn')) {
+                const entryId = e.target.dataset.entryId;
+                if (!confirm('Delete this insight?')) return;
 
-        async function handleGenerateActionItems(event) {
-            const button = event.target;
-            button.disabled = true;
-            button.textContent = 'Generating...';
-            try {
-                const response = await fetch('/action-items/generate/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken.value },
-                    body: JSON.stringify({ ledger_entry_id: button.dataset.entryId })
-                });
-                const data = await response.json();
-                if (data.status === 'success') {
-                    setTimeout(() => switchView('actions-view'), 500); 
-                } else {
-                    alert('Error: ' + data.message);
-                    button.disabled = false;
-                    button.textContent = 'Generate Action Items';
+                const entryEl = document.querySelector(`.ledger-entry[data-entry-id="${entryId}"]`);
+                if (!entryEl) return;
+
+                try {
+                    const response = await fetch(`/ledger/${entryId}/delete/`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrfToken.value }
+                    });
+                    const data = await response.json();
+
+                    if (data.status === 'success') {
+                        // Optimistically move to deleted section (NO REFETCH)
+                        entryEl.classList.add('deleted');
+                        entryEl.querySelector('.ledger-actions')?.remove(); // Remove buttons
+                        deletedLedgerEntries.appendChild(entryEl);
+
+                        // Update empty states
+                        if (ledgerEntries.children.length === 0) {
+                            ledgerEntries.innerHTML = '<p style="padding: 20px; color: rgba(255, 255, 255, 0.5);">No saved insights yet.</p>';
+                        }
+
+                        if (deletedLedgerEntries.querySelector('p')) {
+                            deletedLedgerEntries.querySelector('p')?.remove();
+                        }
+                    } else {
+                        alert('Error: ' + (data.message || 'Failed to delete'));
+                    }
+                } catch (error) {
+                    console.error('Delete error:', error);
+                    alert('Network error while deleting.');
                 }
-            } catch (error) {
-                alert('Network error during generation request.');
-                button.disabled = false;
-                button.textContent = 'Generate Action Items';
             }
+
+            // Generate Action Items
+            if (e.target.classList.contains('generate-actions-btn')) {
+                const btn = e.target;
+                const entryId = btn.dataset.entryId;
+
+                btn.disabled = true;
+                btn.textContent = 'Generating...';
+
+                try {
+                    const response = await fetch('/action-items/generate/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken.value
+                        },
+                        body: JSON.stringify({ ledger_entry_id: entryId })
+                    });
+                    const data = await response.json();
+
+                    if (data.status === 'success' && data.task_id) {
+                        // Poll task status until complete (same pattern as chat)
+                        pollGenerateActionItemsTask(data.task_id, btn);
+                    } else {
+                        alert('Error: ' + (data.message || 'Failed to generate'));
+                        btn.disabled = false;
+                        btn.textContent = 'Generate Action Items';
+                    }
+                } catch (error) {
+                    console.error('Generate error:', error);
+                    alert('Network error while generating.');
+                    btn.disabled = false;
+                    btn.textContent = 'Generate Action Items';
+                }
+            }
+        });
+
+        // Poll Generate Action Items task (Celery async task)
+        function pollGenerateActionItemsTask(taskId, btn) {
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/agent/task_status/${taskId}/`);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const data = await response.json();
+
+                    if (data.status === 'SUCCESS' || data.status === 'FAILURE') {
+                        clearInterval(interval);
+
+                        if (data.status === 'SUCCESS') {
+                            console.log('[ACTION ITEMS] Generation complete:', data.result);
+                            btn.textContent = '✔ Generated';
+                            // Wait a moment then switch to Game Plan
+                            setTimeout(() => switchToGamePlan(), 500);
+                        } else {
+                            alert('Error: Failed to generate action items.');
+                            btn.disabled = false;
+                            btn.textContent = 'Generate Action Items';
+                        }
+                    }
+                } catch (error) {
+                    console.error('Polling error:', error);
+                    clearInterval(interval);
+                    btn.disabled = false;
+                    btn.textContent = 'Generate Action Items';
+                    alert('Error checking generation status.');
+                }
+            }, 2000); // Poll every 2 seconds
         }
 
+        // ============================================================================
+        // GAME PLAN FUNCTIONALITY
+        // ============================================================================
+
+        // Fetch Action Items (called ONLY when user opens Game Plan view)
         async function fetchActionItems() {
-            activeActionsContainer.innerHTML = '<p>Loading...</p>';
-            completedActionsContainer.innerHTML = '';
+            activeActions.innerHTML = '<p style="padding: 20px;">Loading...</p>';
+            completedActions.innerHTML = '';
+            deletedActions.innerHTML = '';
+
             try {
                 const response = await fetch('/action-items/');
                 const data = await response.json();
-                activeActionsContainer.innerHTML = '';
-                completedActionsContainer.innerHTML = '';
-                if (data.active_items.length === 0) activeActionsContainer.innerHTML = '<p>No active tasks. Generate some from your Ledger!</p>';
-                data.active_items.forEach(item => activeActionsContainer.appendChild(createActionItemElement(item)));
-                if (data.completed_items.length === 0) completedActionsContainer.innerHTML = '<p>No tasks completed yet.</p>';
-                data.completed_items.forEach(item => completedActionsContainer.appendChild(createActionItemElement(item)));
-            } catch (e) { activeActionsContainer.innerHTML = '<p>Error loading Action Items.</p>'; }
+
+                activeActions.innerHTML = '';
+                completedActions.innerHTML = '';
+                deletedActions.innerHTML = '';
+
+                if (data.active_items && data.active_items.length > 0) {
+                    data.active_items.forEach(item => {
+                        activeActions.appendChild(createActionItem(item, true)); // true = show delete button
+                    });
+                } else {
+                    activeActions.innerHTML = '<p style="padding: 20px; color: rgba(255, 255, 255, 0.5);">No active tasks. Generate action items from your Ledger insights!</p>';
+                }
+
+                if (data.completed_items && data.completed_items.length > 0) {
+                    data.completed_items.forEach(item => {
+                        completedActions.appendChild(createActionItem(item, false)); // false = no delete button
+                    });
+                } else {
+                    completedActions.innerHTML = '<p style="padding: 20px; color: rgba(255, 255, 255, 0.5);">No completed tasks yet.</p>';
+                }
+
+                if (data.deleted_items && data.deleted_items.length > 0) {
+                    data.deleted_items.forEach(item => {
+                        deletedActions.appendChild(createActionItem(item, false)); // false = no delete button
+                    });
+                } else {
+                    deletedActions.innerHTML = '<p style="padding: 20px; color: rgba(255, 255, 255, 0.5);">No deleted tasks.</p>';
+                }
+            } catch (error) {
+                console.error('Action items fetch error:', error);
+                activeActions.innerHTML = '<p style="padding: 20px; color: #ff4444;">Error loading action items.</p>';
+            }
         }
 
-        function createActionItemElement(item) {
+        // Create Action Item element
+        function createActionItem(item, showDeleteBtn = false) {
             const div = document.createElement('div');
-            div.className = item.is_complete ? 'action-item completed' : 'action-item';
-            div.innerHTML = `<input type="checkbox" ${item.is_complete ? 'checked' : ''} data-item-id="${item.id}"><span class="action-item-desc">${item.description}</span>`;
-            div.querySelector('input').addEventListener('change', handleToggleComplete);
+
+            // Determine class based on status
+            if (item.is_deleted) {
+                div.className = 'action-item deleted';
+            } else if (item.is_complete) {
+                div.className = 'action-item completed';
+            } else {
+                div.className = 'action-item';
+            }
+
+            div.dataset.itemId = item.id;
+
+            let deleteButtonHtml = '';
+            if (showDeleteBtn && !item.is_deleted) {
+                deleteButtonHtml = `<button class="delete-action-btn" data-item-id="${item.id}" title="Delete task">×</button>`;
+            }
+
+            div.innerHTML = `
+                ${deleteButtonHtml}
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1;">
+                    <input type="checkbox" ${item.is_complete ? 'checked' : ''} data-item-id="${item.id}" style="cursor: pointer;" ${item.is_deleted ? 'disabled' : ''}>
+                    <span class="action-item-desc">${item.description}</span>
+                </label>
+            `;
+
             return div;
         }
-        
-        async function handleToggleComplete(event) {
-            const itemId = event.target.dataset.itemId;
-            const response = await fetch(`/action-items/${itemId}/toggle/`, { method: 'POST', headers: { 'X-CSRFToken': csrfToken.value }});
-            const data = await response.json();
-            if (data.status === 'success') fetchActionItems();
-            else { alert('Error updating status.'); event.target.checked = !event.target.checked; }
-        }
-        
-        sessionList.addEventListener('click', function(event) {
-            const link = event.target.closest('.session-link');
-            if (link) {
-                event.preventDefault(); 
-                const sessionId = link.dataset.sessionId;
-                history.pushState({sessionId: sessionId}, '', `/agent/${sessionId}/`);
-                loadConversation(sessionId);
+
+        // Event delegation for action item toggles
+        activeActions.addEventListener('change', handleActionToggle);
+        completedActions.addEventListener('change', handleActionToggle);
+
+        // Event delegation for delete buttons
+        activeActions.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-action-btn')) {
+                handleActionDelete(e.target.dataset.itemId);
             }
         });
+
+        async function handleActionToggle(e) {
+            if (e.target.type === 'checkbox') {
+                const checkbox = e.target;
+                const itemId = checkbox.dataset.itemId;
+                const newState = checkbox.checked;
+
+                // Optimistically update UI
+                const itemEl = document.querySelector(`.action-item[data-item-id="${itemId}"]`);
+                if (newState) {
+                    itemEl.classList.add('completed');
+                } else {
+                    itemEl.classList.remove('completed');
+                }
+
+                try {
+                    const response = await fetch(`/action-items/${itemId}/toggle/`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrfToken.value }
+                    });
+                    const data = await response.json();
+
+                    if (data.status === 'success') {
+                        // Move element to correct container (NO REFETCH - just DOM manipulation)
+                        if (newState) {
+                            completedActions.appendChild(itemEl);
+                        } else {
+                            activeActions.appendChild(itemEl);
+                        }
+
+                        // Update empty states
+                        if (activeActions.children.length === 0) {
+                            activeActions.innerHTML = '<p style="padding: 20px; color: var(--color-text-secondary);">No active tasks.</p>';
+                        } else if (activeActions.querySelector('p')) {
+                            activeActions.querySelector('p')?.remove();
+                        }
+
+                        if (completedActions.children.length === 0) {
+                            completedActions.innerHTML = '<p style="padding: 20px; color: var(--color-text-secondary);">No completed tasks yet.</p>';
+                        } else if (completedActions.querySelector('p')) {
+                            completedActions.querySelector('p')?.remove();
+                        }
+                    } else {
+                        // Revert on error
+                        checkbox.checked = !newState;
+                        if (newState) {
+                            itemEl.classList.remove('completed');
+                        } else {
+                            itemEl.classList.add('completed');
+                        }
+                        alert('Error: ' + (data.message || 'Failed to update'));
+                    }
+                } catch (error) {
+                    console.error('Toggle error:', error);
+                    // Revert on error
+                    checkbox.checked = !newState;
+                    if (newState) {
+                        itemEl.classList.remove('completed');
+                    } else {
+                        itemEl.classList.add('completed');
+                    }
+                    alert('Network error while updating.');
+                }
+            }
+        }
+
+        // Handle deleting action items (soft delete - moves to deleted section)
+        async function handleActionDelete(itemId) {
+            if (!confirm('Delete this task?')) return;
+
+            const itemEl = document.querySelector(`.action-item[data-item-id="${itemId}"]`);
+            if (!itemEl) return;
+
+            try {
+                const response = await fetch(`/action-items/${itemId}/delete/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken.value }
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    // Optimistically move to deleted section (NO REFETCH)
+                    itemEl.classList.add('deleted');
+                    itemEl.querySelector('input[type="checkbox"]').disabled = true;
+                    itemEl.querySelector('.delete-action-btn')?.remove(); // Remove delete button
+                    deletedActions.appendChild(itemEl);
+
+                    // Update empty states
+                    if (activeActions.children.length === 0) {
+                        activeActions.innerHTML = '<p style="padding: 20px; color: rgba(255, 255, 255, 0.5);">No active tasks.</p>';
+                    } else if (activeActions.querySelector('p')) {
+                        activeActions.querySelector('p')?.remove();
+                    }
+
+                    if (deletedActions.querySelector('p')) {
+                        deletedActions.querySelector('p')?.remove();
+                    }
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to delete'));
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert('Network error while deleting.');
+            }
+        }
+
+        // New chat button handler
         newChatBtn.addEventListener('click', () => {
             if (sessionCount >= CHAT_LIMIT) { showDeleteModal(); return; }
             history.pushState({}, '', '/agent/');
             currentSessionId = null;
             clearMessageList();
-            document.querySelectorAll('.session-link').forEach(link => link.classList.remove('active'));
-            addMessage("I'm your personal AI Recruiting Strategist. Ask me anything!", 'agent-message', null);
-            switchView('chat-view');
+            document.querySelectorAll('.session-item').forEach(item => item.classList.remove('active'));
+            addMessage("I'm your personal AI Recruiting Strategist. Ask me anything!", 'agent', null);
         });
         modalCancelBtn.addEventListener('click', hideDeleteModal);
         deletableSessionsList.addEventListener('click', (e) => {
@@ -689,6 +980,22 @@
                 form.dispatchEvent(new Event('submit', {cancelable: true}));
             }
         });
+
+        // ESC key handler - close modals
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (deleteModal.classList.contains('visible')) {
+                    hideDeleteModal();
+                } else if (ledgerModal.classList.contains('visible')) {
+                    ledgerModal.classList.remove('visible');
+                    savingConversationId = null;
+                    savingContent = null;
+                } else if (resetModal.classList.contains('visible')) {
+                    hideResetModal();
+                }
+            }
+        });
+
         form.addEventListener('submit', handleFormSubmit);
 
         // DEVELOPMENT ONLY - Reset Data Functionality
@@ -786,10 +1093,95 @@
             loadConversation(initialSessionId);
         } else {
             clearMessageList();
-            addMessage("Welcome! Select a conversation or start a new one.", 'agent-message', null);
+            addMessage("Welcome! Select a conversation or start a new one.", 'agent', null);
         }
         loadChatHistory();
-        switchView('chat-view');
+
+        // Initialize Particles.js background AFTER critical content loads (non-blocking)
+        setTimeout(() => {
+            particlesJS("particles-js", {
+            "particles": {
+                "number": {
+                    "value": 80,           // Fewer particles for better performance
+                    "density": {
+                        "enable": true,
+                        "value_area": 800
+                    }
+                },
+                "color": {
+                    "value": "#d4a574"     // GOLD particles
+                },
+                "shape": {
+                    "type": "circle",       // Simple circles (or "triangle" for original)
+                    "stroke": {
+                        "width": 0,
+                        "color": "#000000"
+                    }
+                },
+                "opacity": {
+                    "value": 0.3,          // Subtle opacity
+                    "random": true,
+                    "anim": {
+                        "enable": true,
+                        "speed": 1,
+                        "opacity_min": 0.1,
+                        "sync": false
+                    }
+                },
+                "size": {
+                    "value": 5,
+                    "random": true,
+                    "anim": {
+                        "enable": false,
+                        "speed": 40,
+                        "size_min": 0.1,
+                        "sync": false
+                    }
+                },
+                "line_linked": {
+                    "enable": true,
+                    "distance": 150,
+                    "color": "#d4a574",
+                    "opacity": 0.3,
+                    "width": 2
+                },
+                "move": {
+                    "enable": true,
+                    "speed": 2,            // Slow, elegant movement
+                    "direction": "none",
+                    "random": true,
+                    "straight": false,
+                    "out_mode": "out",
+                    "bounce": false,
+                    "attract": {
+                        "enable": false,
+                        "rotateX": 600,
+                        "rotateY": 1200
+                    }
+                }
+            },
+            "interactivity": {
+                "detect_on": "window",
+                "events": {
+                    "onhover": {
+                        "enable": true,
+                        "mode": "repulse"  // Particles move away from cursor
+                    },
+                    "onclick": {
+                        "enable": false    // Disabled for cleaner interaction
+                    },
+                    "resize": true
+                },
+                "modes": {
+                    "repulse": {
+                        "distance": 100,
+                        "duration": 0.4
+                    }
+                }
+            },
+            "retina_detect": true
+            });
+        }, 100); // Delay particles init by 100ms to let critical content load first
     });
     </script>
 </body>

@@ -70,7 +70,10 @@ IS_BUILD_PROCESS = os.environ.get('IS_BUILD_PROCESS') == 'true'
 if IS_BUILD_PROCESS:
     DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': ':memory:'}}
 else:
-    DATABASES = {'default': dj_database_url.config(conn_max_age=300, ssl_require=not DEVELOPMENT_MODE)}
+    # Use custom backend with DNS retry logic for Render cold starts
+    db_config = dj_database_url.config(conn_max_age=300, ssl_require=not DEVELOPMENT_MODE)
+    db_config['ENGINE'] = 'recruiting.db_backends'  # Custom PostgreSQL wrapper with DNS retry
+    DATABASES = {'default': db_config}
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},

@@ -370,6 +370,7 @@ class LedgerEntry(models.Model):
 
     title = models.CharField(max_length=255, help_text="A short summary of the insight.")
     content = models.TextField(help_text="The full, saved insight/advice from the agent.")
+    is_deleted = models.BooleanField(default=False, help_text="Soft delete - moved to deleted section")
     created_at = models.DateTimeField(auto_now_add=True)
 
     # Track who saved it for family context
@@ -415,6 +416,7 @@ class ActionItem(models.Model):
 
     description = models.CharField(max_length=500)
     is_complete = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False, help_text="Soft delete - moved to deleted section")
     priority = models.IntegerField(default=1) # 1: High, 2: Medium, 3: Low
     due_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

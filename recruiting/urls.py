@@ -25,6 +25,7 @@ urlpatterns = [
     path('action-items/', views.action_items_list, name='action_items_list'),
     path('action-items/generate/', views.generate_action_items, name='generate_action_items'),
     path('action-items/<int:item_id>/toggle/', views.toggle_action_item_complete, name='toggle_action_item_complete'),
+    path('action-items/<int:item_id>/delete/', views.delete_action_item, name='delete_action_item'),
 
     # --- END NEW URLS ---
 

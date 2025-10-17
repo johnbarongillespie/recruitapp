@@ -234,12 +234,18 @@ def delete_session(request, session_id):
 
 @login_required
 def ledger_list(request):
-    """API endpoint to get a list of all Ledger entries for the user."""
+    """API endpoint to get a list of all Ledger entries for the user, separated by status."""
     entries = LedgerEntry.objects.filter(user=request.user).order_by('-created_at').values(
-        'id', 'title', 'content', 'created_at', 'conversation_id'
+        'id', 'title', 'content', 'created_at', 'conversation_id', 'is_deleted'
     )
-    # Return as JSON for front-end rendering
-    return JsonResponse({'ledger_entries': list(entries)})
+    # Split into active and deleted for front-end categorization
+    active_entries = [entry for entry in entries if not entry['is_deleted']]
+    deleted_entries = [entry for entry in entries if entry['is_deleted']]
+
+    return JsonResponse({
+        'ledger_entries': active_entries,
+        'deleted_entries': deleted_entries
+    })
 
 @login_required
 def save_to_ledger(request):
@@ -279,11 +285,12 @@ def save_to_ledger(request):
 
 @login_required
 def delete_ledger_entry(request, entry_id):
-    """API endpoint to delete a Ledger entry."""
+    """API endpoint to soft delete a Ledger entry (moves to deleted section)."""
     entry = get_object_or_404(LedgerEntry, pk=entry_id, user=request.user)
     if request.method == 'POST':
-        entry.delete()
-        return JsonResponse({'status': 'success', 'message': 'Ledger entry deleted.'})
+        entry.is_deleted = True
+        entry.save(update_fields=['is_deleted'])
+        return JsonResponse({'status': 'success', 'message': 'Ledger entry moved to deleted.'})
     return JsonResponse({'status': 'error', 'message': 'Only POST requests allowed.'}, status=405)
 
 
@@ -293,17 +300,19 @@ def delete_ledger_entry(request, entry_id):
 
 @login_required
 def action_items_list(request):
-    """API endpoint to get the list of active and completed Action Items."""
+    """API endpoint to get the list of active, completed, and deleted Action Items."""
     items = ActionItem.objects.filter(user=request.user).order_by('-created_at').values(
-        'id', 'description', 'is_complete', 'priority', 'due_date', 'created_at', 'source_ledger_entry_id'
+        'id', 'description', 'is_complete', 'is_deleted', 'priority', 'due_date', 'created_at', 'source_ledger_entry_id'
     )
-    # Split into active and completed for front-end categorization
-    active_items = [item for item in items if not item['is_complete']]
-    completed_items = [item for item in items if item['is_complete']]
-    
+    # Split into active, completed, and deleted for front-end categorization
+    active_items = [item for item in items if not item['is_complete'] and not item['is_deleted']]
+    completed_items = [item for item in items if item['is_complete'] and not item['is_deleted']]
+    deleted_items = [item for item in items if item['is_deleted']]
+
     return JsonResponse({
         'active_items': active_items,
-        'completed_items': completed_items
+        'completed_items': completed_items,
+        'deleted_items': deleted_items
     })
 
 
@@ -342,7 +351,7 @@ def generate_action_items(request):
 
 @login_required
 def toggle_action_item_complete(request, item_id):
-# ... (toggle_action_item_complete view remains unchanged)
+    """API endpoint to toggle completion status of an action item."""
     item = get_object_or_404(ActionItem, pk=item_id, user=request.user)
     if request.method == 'POST':
         item.is_complete = not item.is_complete
@@ -350,7 +359,16 @@ def toggle_action_item_complete(request, item_id):
         return JsonResponse({'status': 'success', 'is_complete': item.is_complete, 'message': 'Action item status updated.'})
     return JsonResponse({'status': 'error', 'message': 'Only POST requests allowed.'}, status=405)
 
-# ... (register and verify_email remain unchanged)
+@login_required
+def delete_action_item(request, item_id):
+    """API endpoint to soft delete an action item (moves to deleted section)."""
+    item = get_object_or_404(ActionItem, pk=item_id, user=request.user)
+    if request.method == 'POST':
+        item.is_deleted = True
+        item.save(update_fields=['is_deleted'])
+        return JsonResponse({'status': 'success', 'message': 'Action item moved to deleted.'})
+    return JsonResponse({'status': 'error', 'message': 'Only POST requests allowed.'}, status=405)
+
 def register(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
