@@ -34,14 +34,14 @@ services:
       - key: PYTHON_VERSION
         value: "3.13.7"
 
-  # The Celery Background Worker
+  # The Celery Background Worker with Beat Scheduler
   - name: recruitapp-worker
     type: worker
     runtime: python
     region: oregon
     plan: starter
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "python -m celery -A recruitapp_core worker --loglevel=info --concurrency=3"
+    startCommand: "python -m celery -A recruitapp_core worker --beat --loglevel=info --concurrency=3"
     envVars:
       - key: DATABASE_URL
         fromDatabase:

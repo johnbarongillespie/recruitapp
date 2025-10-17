@@ -20,6 +20,14 @@ app.conf.result_serializer = 'json'
 app.conf.accept_content = ['json']
 app.conf.timezone = 'UTC'
 
+# Periodic task schedule to keep worker connections alive
+app.conf.beat_schedule = {
+    'db-keepalive-every-5-minutes': {
+        'task': 'recruiting.tasks.db_keepalive',
+        'schedule': 300.0,  # Run every 5 minutes (300 seconds)
+    },
+}
+
 # Windows-specific configuration: Use solo pool (works without gevent dependency issues)
 # For production with concurrency, deploy to Linux or resolve gevent venv installation
 if sys.platform == 'win32':

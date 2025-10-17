@@ -71,8 +71,9 @@ if IS_BUILD_PROCESS:
     DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': ':memory:'}}
 else:
     # Use custom backend with DNS retry logic for Render cold starts
-    db_config = dj_database_url.config(conn_max_age=300, ssl_require=not DEVELOPMENT_MODE)
+    db_config = dj_database_url.config(conn_max_age=600, ssl_require=not DEVELOPMENT_MODE)
     db_config['ENGINE'] = 'recruiting.db_backends'  # Custom PostgreSQL wrapper with DNS retry
+    db_config['CONN_MAX_AGE'] = 600  # Keep connections alive for 10 minutes
     DATABASES = {'default': db_config}
 
 AUTH_PASSWORD_VALIDATORS = [

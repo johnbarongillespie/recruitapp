@@ -23,8 +23,8 @@ class DatabaseWrapper(base.DatabaseWrapper):
         if self.connection is not None:
             return
 
-        max_retries = 5
-        retry_delay = 0.5  # Start with 500ms
+        max_retries = 10
+        retry_delay = 1.0  # Start with 1 second
 
         for attempt in range(max_retries):
             try:

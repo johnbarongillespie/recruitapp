@@ -4,7 +4,8 @@ import vertexai
 from celery import shared_task
 from django.core.exceptions import ObjectDoesNotExist
 from json.decoder import JSONDecodeError
-import requests 
+import requests
+from django.db import connection 
 
 from vertexai.generative_models import (
     GenerativeModel, Part, Content, Tool, FunctionDeclaration,
@@ -339,3 +340,21 @@ def generate_title_and_summary(self, session_id):
     except Exception as e:
         print(f"Error generating title/summary for session {session_id}: {e}")
         raise self.retry(exc=e, countdown=60)
+
+
+# --- Database Connection Keepalive Task ---
+@shared_task
+def db_keepalive():
+    """
+    Keeps the Celery worker's database connection pool warm.
+    Prevents cold start DNS failures by maintaining an active connection.
+    Run this periodically (every 5 minutes) via Celery Beat.
+    """
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        print("[DB KEEPALIVE] Database connection verified")
+        return "Database connection healthy"
+    except Exception as e:
+        print(f"[DB KEEPALIVE] Failed: {e}")
+        return f"Database keepalive failed: {e}"
