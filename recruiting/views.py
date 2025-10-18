@@ -94,10 +94,12 @@ def ask_agent(request):
             if session_id:
                 chat_session = ChatSession.objects.get(id=session_id, user=request.user)
             else:
+                # Check chat limit (exempt staff/superuser/admin users)
                 CHAT_LIMIT = 3
-                current_session_count = ChatSession.objects.filter(user=request.user).count()
-                if current_session_count >= CHAT_LIMIT:
-                    return JsonResponse({'error': 'Chat limit reached.'}, status=403)
+                if not (request.user.is_staff or request.user.is_superuser):
+                    current_session_count = ChatSession.objects.filter(user=request.user).count()
+                    if current_session_count >= CHAT_LIMIT:
+                        return JsonResponse({'error': 'Chat limit reached.'}, status=403)
 
                 chat_session = ChatSession.objects.create(user=request.user, title=user_prompt[:100])
                 session_id = chat_session.id
